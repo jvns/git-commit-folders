@@ -53,3 +53,17 @@ $ ls mnt/branch_histories/main/
 $ ls mnt/branch_histories/main/04-b9c9e9f09cc918825066f105d62c550cc3c0958e/
 commit.go  go.mod  go.sum  main.go
 ```
+
+### cool stuff you can do
+
+**oops, I accidentally deleted some code, I want it back**
+
+you can go into your branch and grep for the code you deleted!
+
+```
+$ cd mnt/branch_histories/main
+$ grep 'func readBlob' */commit.go
+03-fc450bb99460b9b793fcc36ca79b74caf6a9bc2a/commit.go:func readBlob(repo *git.Repository, id plumbing.Hash) ([]byte, error) {
+04-f1e4200744ae2fbe584d3ad3638cf61593a11624/commit.go:func readBlob(repo *git.Repository, id plumbing.Hash) ([]byte, error) {
+05-03bf66122c3acf44fb781f27cd41415af75fcbe4/commit.go:func readBlob(repo *git.Repository, id plumbing.Hash) ([]byte, error) {
+```
