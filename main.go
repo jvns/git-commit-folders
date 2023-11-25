@@ -72,6 +72,7 @@ func (f *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	return []fuse.Dirent{
 		{Name: "commits", Type: fuse.DT_Dir},
 		{Name: "branches", Type: fuse.DT_Dir},
+		{Name: "tags", Type: fuse.DT_Dir},
 		{Name: "branch_histories", Type: fuse.DT_Dir},
 	}, nil
 }
@@ -82,6 +83,8 @@ func (f *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		return &CommitsDir{repo: f.repo}, nil
 	case "branches":
 		return &BranchesDir{repo: f.repo}, nil
+	case "tags":
+		return &TagsDir{repo: f.repo}, nil
 	case "branch_histories":
 		return &BranchHistoriesDir{repo: f.repo}, nil
 	}
