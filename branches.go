@@ -45,5 +45,6 @@ func (f *BranchesDir) Lookup(ctx context.Context, name string) (fs.Node, error) 
 		return nil, fuse.ENOENT
 	}
 	/* return a symlink to ../commits/<hash> */
-	return &SymLink{"../commits/" + ref.Hash().String()}, nil
+	id := ref.Hash().String()
+	return &SymLink{"../commits/" + id[:2] + "/" + id}, nil
 }
