@@ -48,5 +48,5 @@ func (f *TagsDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		return nil, fuse.ENOENT
 	}
 	id := ref.Hash().String()
-	return &SymLink{"../commits/" + id[:2] + "/" + id}, nil
+	return &SymLink{"../commits/" + id}, nil
 }

@@ -13,12 +13,11 @@ branches/  branch_histories/  commits/  tags/
 
 **commits**
 
+the `commits/` directory looks empty, but you can list any individual commit by its sha
+
 ```
 $ ls mnt/commits/
-03/  97/  b9/  da/  dc/  f1/
-$ ls mnt/commits/da/
-da83dce00782814ecfd33ef6d968ff9e43188a94
-$ ls mnt/commits/da/da83dce00782814ecfd33ef6d968ff9e43188a94/
+$ ls mnt/commits/da83dce00782814ecfd33ef6d968ff9e43188a94/
 branches.go  commit.go  go.mod  go.sum  main.go  symlink.go
 ```
 
