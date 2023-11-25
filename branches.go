@@ -47,17 +47,3 @@ func (f *BranchesDir) Lookup(ctx context.Context, name string) (fs.Node, error) 
 	/* return a symlink to ../commits/<hash> */
 	return &SymLink{"../commits/" + ref.Hash().String()}, nil
 }
-
-type SymLink struct {
-	content string
-}
-
-func (s *SymLink) Attr(ctx context.Context, a *fuse.Attr) error {
-	a.Mode = os.ModeSymlink | 0o555
-	a.Size = uint64(len(s.content))
-	return nil
-}
-
-func (s *SymLink) Readlink(ctx context.Context, req *fuse.ReadlinkRequest) (string, error) {
-	return s.content, nil
-}

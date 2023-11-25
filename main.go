@@ -72,6 +72,7 @@ func (f *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	return []fuse.Dirent{
 		{Name: "commits", Type: fuse.DT_Dir},
 		{Name: "branches", Type: fuse.DT_Dir},
+		{Name: "branch_histories", Type: fuse.DT_Dir},
 	}, nil
 }
 
@@ -81,20 +82,8 @@ func (f *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		return &CommitsDir{repo: f.repo}, nil
 	case "branches":
 		return &BranchesDir{repo: f.repo}, nil
+	case "branch_histories":
+		return &BranchHistoriesDir{repo: f.repo}, nil
 	}
 	return nil, fuse.ENOENT
-}
-
-type SymLink struct {
-	content string
-}
-
-func (s *SymLink) Attr(ctx context.Context, a *fuse.Attr) error {
-	a.Mode = os.ModeSymlink | 0o555
-	a.Size = uint64(len(s.content))
-	return nil
-}
-
-func (s *SymLink) Readlink(ctx context.Context, req *fuse.ReadlinkRequest) (string, error) {
-	return s.content, nil
 }
