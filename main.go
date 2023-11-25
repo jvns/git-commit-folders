@@ -7,16 +7,11 @@ import (
 	"log"
 	"os"
 
-	"sync/atomic"
-
 	"github.com/anacrolix/fuse"
 	"github.com/anacrolix/fuse/fs"
 	_ "github.com/anacrolix/fuse/fs/fstestutil"
 	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 )
-
-var NEXT_ID atomic.Uint64
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
@@ -34,6 +29,7 @@ func main() {
 	}
 	mountpoint := flag.Arg(0)
 
+	defer fuse.Unmount(mountpoint) // TODO: doesn't seem to work
 	c, err := fuse.Mount(
 		mountpoint,
 		fuse.FSName("helloworld"),
@@ -47,12 +43,11 @@ func main() {
 	defer c.Close()
 	repo, err := git.PlainOpen(".")
 
-	err = fs.Serve(c, FS{repo: repo})
+	err = fs.Serve(c, &FS{repo})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// check if the mount process has an error to report
 	<-c.Ready
 	if err := c.MountError; err != nil {
 		log.Fatal(err)
@@ -64,30 +59,42 @@ type FS struct {
 	repo *git.Repository
 }
 
-func (FS) Root() (fs.Node, error) {
-	return Dir{}, nil
+func (f *FS) Root() (fs.Node, error) {
+	return f, nil
 }
 
-// Dir implements both Node and Handle for the root directory.
-type Dir struct {
-	repo *git.Repository
-}
-
-func (Dir) Attr(ctx context.Context, a *fuse.Attr) error {
-	a.Inode = 1
+func (f *FS) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
 	return nil
 }
 
-func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
-	hash := plumbing.NewHash(name)
-	commit, err := d.repo.CommitObject(hash)
-	if err != nil {
-		return nil, fuse.ENOENT
-	}
-	return &GitTree{repo: d.repo, id: commit.TreeHash}, nil
+func (f *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+	return []fuse.Dirent{
+		{Name: "commits", Type: fuse.DT_Dir},
+		{Name: "branches", Type: fuse.DT_Dir},
+	}, nil
 }
 
-func (Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	return []fuse.Dirent{}, nil
+func (f *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
+	switch name {
+	case "commits":
+		return &CommitsDir{repo: f.repo}, nil
+	case "branches":
+		return &BranchesDir{repo: f.repo}, nil
+	}
+	return nil, fuse.ENOENT
+}
+
+type SymLink struct {
+	content string
+}
+
+func (s *SymLink) Attr(ctx context.Context, a *fuse.Attr) error {
+	a.Mode = os.ModeSymlink | 0o555
+	a.Size = uint64(len(s.content))
+	return nil
+}
+
+func (s *SymLink) Readlink(ctx context.Context, req *fuse.ReadlinkRequest) (string, error) {
+	return s.content, nil
 }

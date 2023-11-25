@@ -15,6 +15,28 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 )
 
+type CommitsDir struct {
+	repo *git.Repository
+}
+
+func (f *CommitsDir) Root() (fs.Node, error) {
+	return f, nil
+}
+
+func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
+	a.Mode = os.ModeDir | 0o555
+	return nil
+}
+
+func (f *CommitsDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
+	hash := plumbing.NewHash(name)
+	commit, err := f.repo.CommitObject(hash)
+	if err != nil {
+		return nil, fuse.ENOENT
+	}
+	return &GitTree{repo: f.repo, id: commit.TreeHash}, nil
+}
+
 type GitTree struct {
 	repo *git.Repository
 	id   plumbing.Hash
@@ -26,13 +48,11 @@ type GitBlob struct {
 }
 
 func (t *GitTree) Attr(ctx context.Context, a *fuse.Attr) error {
-	a.Inode = NEXT_ID.Add(1)
 	a.Mode = os.ModeDir | 0o555
 	return nil
 }
 
 func (t *GitTree) Lookup(ctx context.Context, name string) (fs.Node, error) {
-	fmt.Printf("Lookup %s\n", name)
 	tree, err := t.repo.TreeObject(t.id)
 	if err != nil {
 		return nil, fmt.Errorf("lookup %s: %w", name, err)
@@ -42,9 +62,11 @@ func (t *GitTree) Lookup(ctx context.Context, name string) (fs.Node, error) {
 		if entry.Name == name {
 			switch entry.Mode {
 			case filemode.Dir:
-				return &GitTree{id: entry.Hash}, nil
+				return &GitTree{repo: t.repo, id: entry.Hash}, nil
 			case filemode.Regular:
-				return &GitBlob{id: entry.Hash}, nil
+				return &GitBlob{repo: t.repo, id: entry.Hash}, nil
+			default:
+				fmt.Printf("Unknown mode %s\n", entry.Mode)
 			}
 		}
 	}
@@ -67,15 +89,18 @@ func (b *GitTree) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 			d.Type = fuse.DT_File
 		}
 		d.Name = entry.Name
-		d.Inode = NEXT_ID.Add(1)
 		dirs = append(dirs, d)
 	}
 	return dirs, nil
 }
 
 func (b *GitBlob) Attr(ctx context.Context, a *fuse.Attr) error {
-	a.Inode = NEXT_ID.Add(1)
+	content, err := b.ReadAll(ctx)
+	if err != nil {
+		return err
+	}
 	a.Mode = 0o444
+	a.Size = uint64(len(content))
 	return nil
 }
 
