@@ -52,6 +52,7 @@ type GitTree struct {
 type GitBlob struct {
 	repo *git.Repository
 	id   plumbing.Hash
+	mode filemode.FileMode
 }
 
 func (t *GitTree) Attr(ctx context.Context, a *fuse.Attr) error {
@@ -72,8 +73,17 @@ func (t *GitTree) Lookup(ctx context.Context, name string) (fs.Node, error) {
 				return &GitTree{repo: t.repo, id: entry.Hash}, nil
 			case filemode.Regular:
 				return &GitBlob{repo: t.repo, id: entry.Hash}, nil
-			default:
-				fmt.Printf("Unknown mode %s\n", entry.Mode)
+			case filemode.Executable:
+				return &GitBlob{repo: t.repo, id: entry.Hash, mode: entry.Mode}, nil
+			case filemode.Symlink:
+				content, err := readBlob(t.repo, entry.Hash)
+				if err != nil {
+					return nil, fmt.Errorf("read symlink: %w", err)
+				}
+				return &SymLink{string(content)}, nil
+			case filemode.Submodule:
+				fmt.Printf("warning: submodule %s not supported\n", entry.Name)
+				return nil, fuse.ENOENT
 			}
 		}
 	}
@@ -94,6 +104,12 @@ func (b *GitTree) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 			d.Type = fuse.DT_Dir
 		case filemode.Regular:
 			d.Type = fuse.DT_File
+		case filemode.Executable:
+			d.Type = fuse.DT_File
+		case filemode.Symlink:
+			d.Type = fuse.DT_Link
+		default:
+			fmt.Printf("%s has unknown mode %s\n", entry.Name, entry.Mode)
 		}
 		d.Name = entry.Name
 		dirs = append(dirs, d)
@@ -111,8 +127,8 @@ func (b *GitBlob) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
-func (b *GitBlob) ReadAll(ctx context.Context) ([]byte, error) {
-	blob, err := b.repo.BlobObject(b.id)
+func readBlob(repo *git.Repository, id plumbing.Hash) ([]byte, error) {
+	blob, err := repo.BlobObject(id)
 	if err != nil {
 		return nil, fmt.Errorf("read blob: %w", err)
 	}
@@ -122,4 +138,8 @@ func (b *GitBlob) ReadAll(ctx context.Context) ([]byte, error) {
 	}
 	defer reader.Close()
 	return io.ReadAll(reader)
+}
+
+func (b *GitBlob) ReadAll(ctx context.Context) ([]byte, error) {
+	return readBlob(b.repo, b.id)
 }
