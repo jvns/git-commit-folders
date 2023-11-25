@@ -29,10 +29,17 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 func (f *CommitsDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
-	hash := plumbing.NewHash(name)
-	commit, err := f.repo.CommitObject(hash)
+	rev, err := f.repo.ResolveRevision(plumbing.Revision(name))
 	if err != nil {
 		return nil, fuse.ENOENT
+	}
+	/* if it's a prefix, symlink to the full name */
+	if rev.String() != name {
+		return &SymLink{content: rev.String()}, nil
+	}
+	commit, err := f.repo.CommitObject(*rev)
+	if err != nil {
+		return nil, fmt.Errorf("error getting commit %s: %w", name, err)
 	}
 	return &GitTree{repo: f.repo, id: commit.TreeHash}, nil
 }
