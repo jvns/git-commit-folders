@@ -197,7 +197,7 @@ func (f *FuseDavFS) ReadDir(path string) ([]os.FileInfo, error) {
 		return nil, err
 	}
 	if _, ok := node.(fs.HandleReadDirAller); !ok {
-		return nil, fmt.Errorf("Node does not implement HandleReadDirAller")
+		return []os.FileInfo{}, nil
 	}
 	files, err := node.(fs.HandleReadDirAller).ReadDirAll(ctx)
 	if err != nil {
@@ -222,18 +222,16 @@ func (f *FuseDavFS) ReadDir(path string) ([]os.FileInfo, error) {
 	return dirents, nil
 }
 
-/* readlink */
 func (f *FuseDavFS) Readlink(filename string) (string, error) {
-	/* open and read the file */
-	file, err := f.Open(filename)
+	ctx := context.Background()
+	node, err := findNode(ctx, f.fs, filename)
 	if err != nil {
 		return "", err
 	}
-	bytes, err := io.ReadAll(file)
-	if err != nil {
-		return "", err
+	if n, ok := node.(fs.NodeReadlinker); ok {
+		return n.Readlink(ctx, nil)
 	}
-	return string(bytes), nil
+	return "", fmt.Errorf("Node does not implement NodeReadlinker")
 }
 
 func (f *FuseFile) Close() error {
