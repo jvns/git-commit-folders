@@ -20,6 +20,11 @@ type CommitsDir struct {
 	repo *git.Repository
 }
 
+type CommitsPrefixDir struct {
+	repo   *git.Repository
+	prefix string
+}
+
 func (f *CommitsDir) Root() (fs.Node, error) {
 	return f, nil
 }
@@ -31,18 +36,74 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
-func (f *CommitsDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
-	rev, err := f.repo.ResolveRevision(plumbing.Revision(name))
+func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+	/* find all 2-digit hex strings for every commit */
+	prefixes := make(map[string]bool)
+	iter, err := f.repo.Log(&git.LogOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for {
+		commit, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		prefixes[commit.Hash.String()[:2]] = true
+		if len(prefixes) == 256 {
+			break
+		}
+	}
+	var entries []fuse.Dirent
+	for prefix := range prefixes {
+		entries = append(entries, fuse.Dirent{
+			Name: prefix,
+			Type: fuse.DT_Dir,
+		})
+	}
+	return entries, nil
+}
+
+func (f *CommitsDir) Lookup(ctx context.Context, prefix string) (fs.Node, error) {
+	return &CommitsPrefixDir{repo: f.repo, prefix: prefix}, nil
+}
+
+func (f *CommitsPrefixDir) Attr(ctx context.Context, a *fuse.Attr) error {
+	a.Mode = os.ModeDir | 0o555
+	return nil
+}
+
+func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+	var entries []fuse.Dirent
+	iter, err := f.repo.Log(&git.LogOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for {
+		commit, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if commit.Hash.String()[:2] == f.prefix {
+			entries = append(entries, fuse.Dirent{
+				Name: commit.Hash.String(),
+				Type: fuse.DT_Link,
+			})
+		}
+	}
+	return entries, nil
+}
+
+func (f *CommitsPrefixDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
+	/* get the git tree */
+	commit, err := f.repo.CommitObject(plumbing.NewHash(name))
 	if err != nil {
 		return nil, fuse.ENOENT
-	}
-	/* if it's a prefix, symlink to the full name */
-	if rev.String() != name {
-		return &SymLink{content: rev.String()}, nil
-	}
-	commit, err := f.repo.CommitObject(*rev)
-	if err != nil {
-		return nil, fmt.Errorf("error getting commit %s: %w", name, err)
 	}
 	return &GitTree{repo: f.repo, id: commit.TreeHash}, nil
 }
@@ -60,8 +121,6 @@ type GitBlob struct {
 
 func (t *GitTree) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
-	a.Mtime = time.Unix(0, 0)
-	a.Ctime = time.Unix(0, 0)
 	return nil
 }
 
@@ -77,7 +136,7 @@ func (t *GitTree) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			case filemode.Dir:
 				return &GitTree{repo: t.repo, id: entry.Hash}, nil
 			case filemode.Regular:
-				return &GitBlob{repo: t.repo, id: entry.Hash}, nil
+				return &GitBlob{repo: t.repo, id: entry.Hash, mode: entry.Mode}, nil
 			case filemode.Executable:
 				return &GitBlob{repo: t.repo, id: entry.Hash, mode: entry.Mode}, nil
 			case filemode.Symlink:
@@ -89,6 +148,8 @@ func (t *GitTree) Lookup(ctx context.Context, name string) (fs.Node, error) {
 			case filemode.Submodule:
 				fmt.Printf("warning: submodule %s not supported\n", entry.Name)
 				return nil, fuse.ENOENT
+			default:
+				fmt.Printf("Unknown mode %s\n", entry.Mode)
 			}
 		}
 	}
@@ -127,7 +188,14 @@ func (b *GitBlob) Attr(ctx context.Context, a *fuse.Attr) error {
 	if err != nil {
 		return err
 	}
-	a.Mode = 0o444
+	switch b.mode {
+	case filemode.Executable:
+		a.Mode = 0o555
+	case filemode.Symlink:
+		a.Mode = os.ModeSymlink | 0o555
+	default:
+		a.Mode = 0o444
+	}
 	a.Size = uint64(len(content))
 	a.Mtime = time.Unix(0, 0)
 	a.Ctime = time.Unix(0, 0)
