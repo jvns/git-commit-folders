@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/anacrolix/fuse"
 	"github.com/anacrolix/fuse/fs"
@@ -25,6 +26,8 @@ func (f *CommitsDir) Root() (fs.Node, error) {
 
 func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
+	a.Mtime = time.Unix(0, 0)
+	a.Ctime = time.Unix(0, 0)
 	return nil
 }
 
@@ -57,6 +60,8 @@ type GitBlob struct {
 
 func (t *GitTree) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
+	a.Mtime = time.Unix(0, 0)
+	a.Ctime = time.Unix(0, 0)
 	return nil
 }
 
@@ -124,6 +129,8 @@ func (b *GitBlob) Attr(ctx context.Context, a *fuse.Attr) error {
 	}
 	a.Mode = 0o444
 	a.Size = uint64(len(content))
+	a.Mtime = time.Unix(0, 0)
+	a.Ctime = time.Unix(0, 0)
 	return nil
 }
 

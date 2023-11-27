@@ -122,7 +122,8 @@ func (f FuseAttr) Mode() os.FileMode {
 }
 
 func (f FuseAttr) ModTime() time.Time {
-	return f.attr.Mtime
+	// TODO: wrong
+	return time.Unix(0, 0)
 }
 
 func (f FuseAttr) IsDir() bool {

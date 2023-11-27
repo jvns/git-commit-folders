@@ -3,6 +3,7 @@ package fuse
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/anacrolix/fuse"
 	"github.com/anacrolix/fuse/fs"
@@ -20,6 +21,8 @@ func (f *TagsDir) Root() (fs.Node, error) {
 
 func (f *TagsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
+	a.Mtime = time.Unix(0, 0)
+	a.Ctime = time.Unix(0, 0)
 	return nil
 }
 
