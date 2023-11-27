@@ -10,6 +10,7 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/jvns/git-commit-folders/fuse"
 	"github.com/jvns/git-commit-folders/fuse2dav"
+	"github.com/jvns/git-commit-folders/fuse2nfs"
 	"golang.org/x/net/webdav"
 )
 
@@ -33,7 +34,7 @@ func main() {
 	}
 
 	mountpoint := flag.Arg(0)
-	typ := "dav"
+	typ := "nfs"
 	if typ == "dav" {
 		fs := fuse.New(repo)
 		davFS := fuse2dav.Fuse2Dav(fs)
@@ -60,6 +61,10 @@ func main() {
 		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", 8999), nil); err != nil {
 			log.Fatalf("Error with WebDAV server: %v", err)
 		}
+	} else if typ == "nfs" {
+		fs := fuse.New(repo)
+		nfsFS := fuse2nfs.Fuse2NFS(fs)
+		fuse2nfs.RunServer(nfsFS, 8999)
 	} else {
 		fuse.Run(repo, mountpoint)
 	}
