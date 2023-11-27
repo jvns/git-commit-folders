@@ -41,6 +41,10 @@ type FS struct {
 	repo *git.Repository
 }
 
+func New(repo *git.Repository) *FS {
+	return &FS{repo: repo}
+}
+
 func (f *FS) Root() (fs.Node, error) {
 	return f, nil
 }

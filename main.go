@@ -4,11 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
-	_ "github.com/anacrolix/fuse/fs/fstestutil"
 	git "github.com/go-git/go-git/v5"
 	"github.com/jvns/git-commit-folders/fuse"
+	"github.com/jvns/git-commit-folders/fuse2dav"
+	"golang.org/x/net/webdav"
 )
 
 func usage() {
@@ -31,5 +33,26 @@ func main() {
 	}
 
 	mountpoint := flag.Arg(0)
-	fuse.Run(repo, mountpoint)
+	typ := "dav"
+	if typ == "dav" {
+		fs := fuse.New(repo)
+		davFS := fuse2dav.Fuse2Dav(fs)
+		srv := &webdav.Handler{
+			FileSystem: davFS,
+			LockSystem: webdav.NewMemLS(),
+			Logger: func(r *http.Request, err error) {
+				if err != nil {
+					log.Printf("WEBDAV [%s]: %s, ERROR: %s\n", r.Method, r.URL, err)
+				} else {
+					log.Printf("WEBDAV [%s]: %s \n", r.Method, r.URL)
+				}
+			},
+		}
+		http.Handle("/", srv)
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", 8999), nil); err != nil {
+			log.Fatalf("Error with WebDAV server: %v", err)
+		}
+	} else {
+		fuse.Run(repo, mountpoint)
+	}
 }
