@@ -67,7 +67,7 @@ func (f *FuseDavFS) OpenFile(ctx context.Context, path string, flag int, perm os
 	if err != nil {
 		return nil, err
 	}
-	return FuseDavNode{node: node, path: path}, nil
+	return &FuseDavNode{node: node, path: path}, nil
 }
 
 func (f *FuseDavFS) RemoveAll(ctx context.Context, name string) error {
@@ -120,40 +120,39 @@ func (f FuseAttr) Sys() interface{} {
 
 /* http.File implementation for FuseDavNode */
 
-func (f FuseDavNode) Close() error {
+func (f *FuseDavNode) Close() error {
 	return nil
 }
 
-func (f FuseDavNode) ReadBytes() error {
+func (f *FuseDavNode) ReadBytes() error {
 	if f.allBytes != nil {
 		return nil
 	}
 	if n, ok := f.node.(fs.HandleReadAller); ok {
 		ctx := context.Background()
-		all, err := n.ReadAll(ctx)
+		var err error
+		f.allBytes, err = n.ReadAll(ctx)
 		if err != nil {
 			return err
 		}
-		f.allBytes = all
 	} else {
 		return fmt.Errorf("Node does not implement HandleReadAller")
 	}
 	return nil
 }
 
-func (f FuseDavNode) Read(p []byte) (n int, err error) {
+func (f *FuseDavNode) Read(p []byte) (n int, err error) {
 	err = f.ReadBytes()
 	if err != nil {
 		return 0, err
 	}
+
 	n = copy(p, f.allBytes[f.bytesRead:])
 	f.bytesRead += n
 	return n, nil
 }
 
-/* seek */
-
-func (f FuseDavNode) Seek(offset int64, whence int) (int64, error) {
+func (f *FuseDavNode) Seek(offset int64, whence int) (int64, error) {
 	err := f.ReadBytes()
 	if err != nil {
 		return 0, err
@@ -169,7 +168,7 @@ func (f FuseDavNode) Seek(offset int64, whence int) (int64, error) {
 	return int64(f.bytesRead), nil
 }
 
-func (f FuseDavNode) Readdir(count int) ([]os.FileInfo, error) {
+func (f *FuseDavNode) Readdir(count int) ([]os.FileInfo, error) {
 	node := f.node
 	if f.allFiles == nil {
 		if n, ok := node.(fs.HandleReadDirAller); ok {
@@ -207,7 +206,7 @@ func (f FuseDavNode) Readdir(count int) ([]os.FileInfo, error) {
 	return infos, nil
 }
 
-func (f FuseDavNode) Stat() (os.FileInfo, error) {
+func (f *FuseDavNode) Stat() (os.FileInfo, error) {
 	ctx := context.Background()
 	attr := fuse.Attr{}
 	err := f.node.Attr(ctx, &attr)
@@ -218,6 +217,6 @@ func (f FuseDavNode) Stat() (os.FileInfo, error) {
 	return FuseAttr{attr: attr, name: parts[len(parts)-1]}, nil
 }
 
-func (f FuseDavNode) Write(p []byte) (n int, err error) {
+func (f *FuseDavNode) Write(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("Not implemented")
 }

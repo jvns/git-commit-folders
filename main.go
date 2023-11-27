@@ -49,6 +49,14 @@ func main() {
 			},
 		}
 		http.Handle("/", srv)
+		///* mount mountpoint*/
+		//cmd := exec.Command("mount", "-t", "webdav", "-o", "rw", "http://localhost:8999", mountpoint)
+		//cmd.Stdout = os.Stdout
+		//cmd.Stderr = os.Stderr
+		//if err := cmd.Run(); err != nil {
+		//    log.Fatalf("Error mounting %s: %v", mountpoint, err)
+		//}
+
 		if err := http.ListenAndServe(fmt.Sprintf(":%d", 8999), nil); err != nil {
 			log.Fatalf("Error with WebDAV server: %v", err)
 		}
