@@ -92,5 +92,5 @@ func (f *BranchHistoryDir) Lookup(ctx context.Context, name string) (fs.Node, er
 	if err != nil {
 		return nil, fuse.ENOENT
 	}
-	return &SymLink{"../../commits/" + hash}, nil
+	return &SymLink{"../../commits/" + hash[:2] + "/" + hash}, nil
 }

@@ -209,13 +209,13 @@ func (f *FuseDavFS) ReadDir(path string) ([]os.FileInfo, error) {
 		attr := fuse.Attr{}
 		switch file.Type {
 		case fuse.DT_Dir:
-			attr.Mode = os.ModeDir
+			attr.Mode = os.ModeDir | 0555
 		case fuse.DT_File:
-			attr.Mode = 0644
+			attr.Mode = 0444
 		case fuse.DT_Link:
-			attr.Mode = os.ModeSymlink
+			attr.Mode = os.ModeSymlink | 0444
 		default:
-			attr.Mode = 0644
+			attr.Mode = 0444
 		}
 
 		dirents = append(dirents, FuseAttr{attr: attr, name: file.Name})

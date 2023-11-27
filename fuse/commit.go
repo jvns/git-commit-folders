@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 
@@ -92,7 +93,7 @@ func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error
 		if commit.Hash.String()[:2] == f.prefix {
 			entries = append(entries, fuse.Dirent{
 				Name: commit.Hash.String(),
-				Type: fuse.DT_Link,
+				Type: fuse.DT_Dir,
 			})
 		}
 	}
@@ -120,6 +121,7 @@ type GitBlob struct {
 }
 
 func (t *GitTree) Attr(ctx context.Context, a *fuse.Attr) error {
+	log.Printf("GitTree.Attr: %s", t.id)
 	a.Mode = os.ModeDir | 0o555
 	return nil
 }
