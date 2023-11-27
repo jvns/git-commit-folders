@@ -195,7 +195,7 @@ func (f *FuseDavNode) Readdir(count int) ([]os.FileInfo, error) {
 			}
 			f.allFiles = attrs
 		} else {
-			return nil, fmt.Errorf("Node does not implement HandleReadDirAller")
+			return []os.FileInfo{}, nil
 		}
 	}
 	if count == 0 {
