@@ -57,7 +57,7 @@ func main() {
 		//    log.Fatalf("Error mounting %s: %v", mountpoint, err)
 		//}
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", 8999), nil); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", 8999), nil); err != nil {
 			log.Fatalf("Error with WebDAV server: %v", err)
 		}
 	} else {
