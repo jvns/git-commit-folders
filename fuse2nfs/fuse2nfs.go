@@ -17,7 +17,7 @@ import (
 	nfshelper "github.com/willscott/go-nfs/helpers"
 )
 
-type FuseDavFS struct {
+type FuseNFSfs struct {
 	fs fs.FS
 }
 type FuseAttr struct {
@@ -34,7 +34,7 @@ type FuseFile struct {
 }
 
 func Fuse2NFS(fs fs.FS) billy.Filesystem {
-	return &FuseDavFS{fs: fs}
+	return &FuseNFSfs{fs: fs}
 }
 
 func RunServer(fs billy.Filesystem, port int) {
@@ -56,19 +56,19 @@ func panicOnErr(err error, desc ...interface{}) {
 
 /** THESE THINGS AREN'T IMPLEMENTED **/
 
-func (fs *FuseDavFS) Chroot(path string) (billy.Filesystem, error) {
+func (fs *FuseNFSfs) Chroot(path string) (billy.Filesystem, error) {
 	return nil, fmt.Errorf("not implemented")
 }
-func (fs *FuseDavFS) Root() string {
+func (fs *FuseNFSfs) Root() string {
 	/* hope this doesn't cause a problem */
 	return ""
 }
 
-func (fs *FuseDavFS) Create(filename string) (billy.File, error) {
+func (fs *FuseNFSfs) Create(filename string) (billy.File, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (f *FuseDavFS) MkdirAll(path string, perm os.FileMode) error {
+func (f *FuseNFSfs) MkdirAll(path string, perm os.FileMode) error {
 	return fmt.Errorf("not implemented")
 }
 func (f *FuseFile) Lock() error {
@@ -87,23 +87,23 @@ func (f *FuseFile) Truncate(size int64) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (f *FuseDavFS) Symlink(target, link string) error {
+func (f *FuseNFSfs) Symlink(target, link string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (f *FuseDavFS) TempFile(dir, prefix string) (billy.File, error) {
+func (f *FuseNFSfs) TempFile(dir, prefix string) (billy.File, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (fs *FuseDavFS) Join(elem ...string) string {
+func (fs *FuseNFSfs) Join(elem ...string) string {
 	return strings.Join(elem, "/")
 }
 
-func (fs *FuseDavFS) Remove(path string) error {
+func (fs *FuseNFSfs) Remove(path string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (fs *FuseDavFS) Rename(from, to string) error {
+func (fs *FuseNFSfs) Rename(from, to string) error {
 	return fmt.Errorf("not implemented")
 }
 
@@ -158,7 +158,7 @@ func findNode(ctx context.Context, root fs.FS, path string) (fs.Node, error) {
 	return node, nil
 }
 
-func (f *FuseDavFS) Stat(filename string) (os.FileInfo, error) {
+func (f *FuseNFSfs) Stat(filename string) (os.FileInfo, error) {
 	ctx := context.Background()
 	node, err := findNode(ctx, f.fs, filename)
 	if err != nil {
@@ -173,11 +173,11 @@ func (f *FuseDavFS) Stat(filename string) (os.FileInfo, error) {
 	return FuseAttr{attr: a, name: parts[len(parts)-1]}, nil
 }
 
-func (f *FuseDavFS) Lstat(filename string) (os.FileInfo, error) {
+func (f *FuseNFSfs) Lstat(filename string) (os.FileInfo, error) {
 	return f.Stat(filename)
 }
 
-func (f *FuseDavFS) Open(filename string) (billy.File, error) {
+func (f *FuseNFSfs) Open(filename string) (billy.File, error) {
 	ctx := context.Background()
 	node, err := findNode(ctx, f.fs, filename)
 	if err != nil {
@@ -187,11 +187,11 @@ func (f *FuseDavFS) Open(filename string) (billy.File, error) {
 	return &FuseFile{node: node, name: parts[len(parts)-1]}, nil
 }
 
-func (f *FuseDavFS) OpenFile(filename string, flag int, perm os.FileMode) (billy.File, error) {
+func (f *FuseNFSfs) OpenFile(filename string, flag int, perm os.FileMode) (billy.File, error) {
 	return f.Open(filename)
 }
 
-func (f *FuseDavFS) ReadDir(path string) ([]os.FileInfo, error) {
+func (f *FuseNFSfs) ReadDir(path string) ([]os.FileInfo, error) {
 	ctx := context.Background()
 	node, err := findNode(ctx, f.fs, path)
 	if err != nil {
@@ -223,7 +223,7 @@ func (f *FuseDavFS) ReadDir(path string) ([]os.FileInfo, error) {
 	return dirents, nil
 }
 
-func (f *FuseDavFS) Readlink(filename string) (string, error) {
+func (f *FuseNFSfs) Readlink(filename string) (string, error) {
 	ctx := context.Background()
 	node, err := findNode(ctx, f.fs, filename)
 	if err != nil {

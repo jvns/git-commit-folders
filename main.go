@@ -9,7 +9,6 @@ import (
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/jvns/git-commit-folders/fuse"
-	"github.com/jvns/git-commit-folders/fuse2dav"
 	"github.com/jvns/git-commit-folders/fuse2nfs"
 	"golang.org/x/net/webdav"
 )
@@ -34,10 +33,10 @@ func main() {
 	}
 
 	mountpoint := flag.Arg(0)
-	typ := "nfs"
+	typ := "dav"
 	if typ == "dav" {
 		fs := fuse.New(repo)
-		davFS := fuse2dav.Fuse2Dav(fs)
+		davFS := fuse2nfs.Fuse2Dav(fs)
 		srv := &webdav.Handler{
 			FileSystem: davFS,
 			LockSystem: webdav.NewMemLS(),
