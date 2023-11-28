@@ -13,11 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anacrolix/fuse"
 	"github.com/anacrolix/fuse/fs"
 	"github.com/go-git/go-billy/v5/helper/chroot"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/storage/filesystem"
-	"github.com/jvns/git-commit-folders/fuse"
+	myfuse "github.com/jvns/git-commit-folders/fuse"
 	"github.com/jvns/git-commit-folders/fuse2nfs"
 	"github.com/willscott/go-nfs"
 	nfshelper "github.com/willscott/go-nfs/helpers"
@@ -55,7 +56,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fs := fuse.New(repo)
+	fs := myfuse.New(repo)
 
 	mountpoint, err := createMountpoint(repo)
 	if err != nil {
@@ -66,7 +67,7 @@ func main() {
 	} else if opts.typ == "nfs" {
 		serveNFS(fs, mountpoint)
 	} else {
-		fuse.Run(repo, mountpoint)
+		serveFuse(fs, mountpoint)
 	}
 }
 
@@ -109,6 +110,28 @@ func serveNFS(fs fs.FS, mountpoint string) {
 	serve(server, mountCmd, mountpoint)
 }
 
+func serveFuse(fuseFS fs.FS, mountpoint string) {
+	c, err := fuse.Mount(
+		mountpoint,
+		fuse.FSName("helloworld"),
+		fuse.Subtype("hellofs"),
+		fuse.LocalVolume(),
+		fuse.VolumeName("Hello world!"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer c.Close()
+
+	<-c.Ready
+
+	server := func() error {
+		defer c.Close()
+		return fs.Serve(c, fuseFS)
+	}
+	serve(server, nil, mountpoint)
+}
+
 func serve(server func() error, mountCmd *exec.Cmd, mountpoint string) {
 	serverDone := make(chan error)
 	sigchan := make(chan os.Signal, 1)
@@ -120,8 +143,11 @@ func serve(server func() error, mountCmd *exec.Cmd, mountpoint string) {
 		close(serverDone)
 	}()
 	time.Sleep(500 * time.Millisecond)
-	if err := mountCmd.Run(); err != nil {
-		log.Fatal(err)
+	if mountCmd != nil {
+		if err := mountCmd.Run(); err != nil {
+			log.Fatal(err)
+
+		}
 	}
 
 	select {
