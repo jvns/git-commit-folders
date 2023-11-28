@@ -108,3 +108,12 @@ there are 1 million bugs and limitations. I may or may not ever fix any of
 them. It's read only so it shouldn't do any harm to your git repository though,
 I think the worst thing that can happen is that it'll mislead you about
 something or be really slow to unmount.
+
+### thanks
+
+thanks to [vasi](https://github.com/vasi) for explaining one hundred things about filesystems to me
+
+### similar projects
+
+* Rust Git FUSE filesystem: https://github.com/fanzeyi/giblefs
+* git for plan 9: https://orib.dev/git9.html
