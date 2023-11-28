@@ -3,6 +3,8 @@ package fuse2nfs
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"strings"
 
@@ -61,6 +63,14 @@ func (f *FuseDavFS) OpenFile(ctx context.Context, name string, flag int, perm os
 
 func (f *FuseDavFile) Close() error {
 	return nil
+}
+
+func DebugLogger(r *http.Request, err error) {
+	if err != nil {
+		log.Printf("WEBDAV [%s]: %s, ERROR: %s\n", r.Method, r.URL, err)
+	} else {
+		log.Printf("WEBDAV [%s]: %s \n", r.Method, r.URL)
+	}
 }
 
 func (f *FuseDavFile) Read(p []byte) (int, error) {
