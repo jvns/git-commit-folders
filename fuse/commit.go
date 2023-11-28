@@ -36,29 +36,50 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
-func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	/* find all 2-digit hex strings for every commit */
-	prefixes := make(map[string]bool)
-	objStorer := f.repo.Storer
-	iter, err := objStorer.IterEncodedObjects(plumbing.CommitObject)
-	if err != nil {
-		return nil, err
-	}
-	for {
-		commit, err := iter.Next()
-		if err == io.EOF {
-			break
-		}
+type CommitsCache struct {
+	commits map[string][]string
+	expiry  time.Time
+}
+
+var cachedCommits *CommitsCache
+
+func getCommits(repo *git.Repository) (map[string][]string, error) {
+	if cachedCommits == nil || cachedCommits.expiry.Before(time.Now()) {
+		objStorer := repo.Storer
+		commits := make(map[string][]string)
+		iter, err := objStorer.IterEncodedObjects(plumbing.CommitObject)
 		if err != nil {
 			return nil, err
 		}
-		prefixes[commit.Hash().String()[:2]] = true
-		if len(prefixes) == 256 {
-			break
+		start := time.Now()
+		for {
+			commit, err := iter.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+			commits[commit.Hash().String()[:2]] = append(commits[commit.Hash().String()[:2]], commit.Hash().String())
 		}
+		elapsed := time.Since(start)
+		// cache for 20x the time it took to read the commits
+		cacheDuration := elapsed * 20
+		if cacheDuration > 1*time.Minute {
+			cacheDuration = 1 * time.Minute
+		}
+		cachedCommits = &CommitsCache{commits, time.Now().Add(cacheDuration)}
+	}
+	return cachedCommits.commits, nil
+}
+
+func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+	commits, err := getCommits(f.repo)
+	if err != nil {
+		return nil, err
 	}
 	var entries []fuse.Dirent
-	for prefix := range prefixes {
+	for prefix, _ := range commits {
 		entries = append(entries, fuse.Dirent{
 			Name: prefix,
 			Type: fuse.DT_Dir,
@@ -77,26 +98,16 @@ func (f *CommitsPrefixDir) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	var entries []fuse.Dirent
-	objStorer := f.repo.Storer
-	iter, err := objStorer.IterEncodedObjects(plumbing.CommitObject)
+	commits, err := getCommits(f.repo)
 	if err != nil {
 		return nil, err
 	}
-	for {
-		commit, err := iter.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		if commit.Hash().String()[:2] == f.prefix {
-			entries = append(entries, fuse.Dirent{
-				Name: commit.Hash().String(),
-				Type: fuse.DT_Dir,
-			})
-		}
+	entries := []fuse.Dirent{}
+	for _, commit := range commits[f.prefix] {
+		entries = append(entries, fuse.Dirent{
+			Name: commit,
+			Type: fuse.DT_Dir,
+		})
 	}
 	return entries, nil
 }

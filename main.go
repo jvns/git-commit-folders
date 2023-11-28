@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	//_ "net/http/pprof"
 	"os"
 
 	git "github.com/go-git/go-git/v5"
@@ -20,6 +22,9 @@ func usage() {
 }
 
 func main() {
+	//go func() {
+	//	log.Println(http.ListenAndServe("localhost:6060", nil))
+	//}()
 	flag.Usage = usage
 	flag.Parse()
 
