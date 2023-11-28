@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
-	//_ "net/http/pprof"
 	"os"
 
 	git "github.com/go-git/go-git/v5"
@@ -21,25 +19,34 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func main() {
-	//go func() {
-	//	log.Println(http.ListenAndServe("localhost:6060", nil))
-	//}()
-	flag.Usage = usage
-	flag.Parse()
+type options struct {
+	typ        string
+	mountpoint string
+	repoDir    string
+}
 
-	if flag.NArg() != 1 {
+func parseOptions() options {
+	var opts options
+	flag.StringVar(&opts.typ, "type", "webdav", "type of mount (webdav, nfs, or fuse)")
+	flag.StringVar(&opts.mountpoint, "mountpoint", "", "mountpoint")
+	flag.StringVar(&opts.repoDir, "repo", ".", "repo dir")
+	flag.Parse()
+	if opts.typ != "webdav" && opts.typ != "nfs" && opts.typ != "fuse" {
 		usage()
-		os.Exit(2)
+		log.Fatalf("Invalid type %s\n", opts.typ)
 	}
-	repo, err := git.PlainOpen(".")
+	return opts
+}
+
+func main() {
+	opts := parseOptions()
+	repo, err := git.PlainOpen(opts.repoDir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	mountpoint := flag.Arg(0)
-	typ := "nfs"
-	if typ == "dav" {
+	if opts.typ == "webdav" {
 		fs := fuse.New(repo)
 		davFS := fuse2nfs.Fuse2Dav(fs)
 		srv := &webdav.Handler{
@@ -65,7 +72,7 @@ func main() {
 		if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", 8999), nil); err != nil {
 			log.Fatalf("Error with WebDAV server: %v", err)
 		}
-	} else if typ == "nfs" {
+	} else if opts.typ == "nfs" {
 		fs := fuse.New(repo)
 		nfsFS := fuse2nfs.Fuse2NFS(fs)
 		fuse2nfs.RunServer(nfsFS, 8999)
