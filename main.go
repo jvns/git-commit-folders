@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -58,7 +59,11 @@ func main() {
 	}
 	fs := myfuse.New(repo)
 
-	mountpoint, err := createMountpoint(repo)
+	mountpoint := opts.mountpoint
+
+	if mountpoint == "" {
+		mountpoint, err = createMountpoint(repo)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -162,9 +167,11 @@ func serve(server func() error, mountCmd *exec.Cmd, mountpoint string) {
 	if err := umountCmd.Run(); err != nil {
 		fmt.Printf("Error unmounting %s: %v\n", mountpoint, err)
 	}
-	/* delete mountpoint dir */
-	if err := os.Remove(mountpoint); err != nil {
-		fmt.Printf("Error removing %s: %v\n", mountpoint, err)
+	/* delete mountpoint dir if we created it */
+	if strings.Contains(mountpoint, ".git/commit-folders") {
+		if err := os.Remove(mountpoint); err != nil {
+			fmt.Printf("Error removing %s: %v\n", mountpoint, err)
+		}
 	}
 }
 
