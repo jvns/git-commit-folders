@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/anacrolix/fuse"
@@ -131,7 +132,13 @@ func (f FuseAttr) IsDir() bool {
 }
 
 func (f FuseAttr) Sys() interface{} {
-	return nil
+	return &syscall.Stat_t{
+		Uid:   uint32(os.Getuid()),
+		Gid:   uint32(os.Getgid()),
+		Rdev:  0,
+		Ino:   f.attr.Inode,
+		Nlink: 1,
+	}
 }
 
 func findNode(ctx context.Context, root fs.FS, path string) (fs.Node, error) {
@@ -165,31 +172,40 @@ func nodeToFileInfo(node fs.Node, filename string) (os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	parts := strings.Split(filename, "/")
-	return FuseAttr{attr: a, name: parts[len(parts)-1]}, nil
+	return FuseAttr{attr: a, name: filename}, nil
 }
 
-func (f *FuseNFSfs) Stat(filename string) (os.FileInfo, error) {
+func (f *FuseNFSfs) Stat(path string) (os.FileInfo, error) {
 	ctx := context.Background()
-	node, err := findNode(ctx, f.fs, filename)
+	node, err := findNode(ctx, f.fs, path)
 	if err != nil {
 		return nil, err
 	}
-	return nodeToFileInfo(node, filename)
+	return nodeToFileInfo(node, getFilename(path))
 }
 
 func (f *FuseNFSfs) Lstat(filename string) (os.FileInfo, error) {
 	return f.Stat(filename)
 }
 
-func (f *FuseNFSfs) Open(filename string) (billy.File, error) {
+func getFilename(path string) string {
+	parts := strings.Split(path, "/")
+	/* return the last nonempty part */
+	for i := len(parts) - 1; i >= 0; i-- {
+		if parts[i] != "" {
+			return parts[i]
+		}
+	}
+	return "/"
+}
+
+func (f *FuseNFSfs) Open(path string) (billy.File, error) {
 	ctx := context.Background()
-	node, err := findNode(ctx, f.fs, filename)
+	node, err := findNode(ctx, f.fs, path)
 	if err != nil {
 		return nil, err
 	}
-	parts := strings.Split(filename, "/")
-	return &FuseFile{node: node, name: parts[len(parts)-1]}, nil
+	return &FuseFile{node: node, name: getFilename(path)}, nil
 }
 
 func (f *FuseNFSfs) OpenFile(filename string, flag int, perm os.FileMode) (billy.File, error) {
@@ -217,19 +233,15 @@ func getFileInfos(node fs.Node) ([]os.FileInfo, error) {
 
 	dirents := []os.FileInfo{}
 	for _, file := range files {
-		attr := fuse.Attr{}
-		switch file.Type {
-		case fuse.DT_Dir:
-			attr.Mode = os.ModeDir | 0555
-		case fuse.DT_File:
-			attr.Mode = 0444
-		case fuse.DT_Link:
-			attr.Mode = os.ModeSymlink | 0444
-		default:
-			attr.Mode = 0444
+		node, err := node.(fs.NodeStringLookuper).Lookup(ctx, file.Name)
+		if err != nil {
+			return nil, err
 		}
-
-		dirents = append(dirents, FuseAttr{attr: attr, name: file.Name})
+		attr, err := nodeToFileInfo(node, file.Name)
+		if err != nil {
+			return nil, err
+		}
+		dirents = append(dirents, attr)
 	}
 	return dirents, nil
 }

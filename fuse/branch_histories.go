@@ -26,6 +26,7 @@ func (f *BranchHistoriesDir) Root() (fs.Node, error) {
 
 func (f *BranchHistoriesDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
+	a.Inode = inode("/branch_histories")
 	return nil
 }
 
@@ -56,6 +57,7 @@ func (f *BranchHistoriesDir) Lookup(ctx context.Context, name string) (fs.Node, 
 
 func (f *BranchHistoryDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
+	a.Inode = inode("/branch_histories/" + f.branch)
 	return nil
 }
 

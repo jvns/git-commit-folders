@@ -17,6 +17,8 @@ func (s *SymLink) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Size = uint64(len(s.content))
 	a.Mtime = time.Unix(0, 0)
 	a.Ctime = time.Unix(0, 0)
+	/* TODO: is it bad to define the inode this way? */
+	a.Inode = inode(s.content)
 	return nil
 }
 

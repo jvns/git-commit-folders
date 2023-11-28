@@ -33,6 +33,7 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
 	a.Mtime = time.Unix(0, 0)
 	a.Ctime = time.Unix(0, 0)
+	a.Inode = inode("/commits")
 	return nil
 }
 
@@ -94,6 +95,7 @@ func (f *CommitsDir) Lookup(ctx context.Context, prefix string) (fs.Node, error)
 
 func (f *CommitsPrefixDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
+	a.Inode = inode("/commits/" + f.prefix)
 	return nil
 }
 
@@ -134,6 +136,7 @@ type GitBlob struct {
 
 func (t *GitTree) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
+	a.Inode = inode(t.id.String())
 	return nil
 }
 

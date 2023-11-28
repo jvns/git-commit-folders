@@ -51,6 +51,7 @@ func (f *FS) Root() (fs.Node, error) {
 
 func (f *FS) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | 0o555
+	a.Inode = 1
 	return nil
 }
 
