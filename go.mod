@@ -31,7 +31,7 @@ require (
 	github.com/rasky/go-xdr v0.0.0-20170124162913-1a41d1a06c93 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.2.0 // indirect
-	github.com/willscott/go-nfs v0.0.0-20231115120015-a91b8b3bf0fd // indirect
+	github.com/willscott/go-nfs v0.0.0-20231128164741-1a76cb0544e8 // indirect
 	github.com/willscott/go-nfs-client v0.0.0-20200605172546-271fa9065b33 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	golang.org/x/crypto v0.14.0 // indirect

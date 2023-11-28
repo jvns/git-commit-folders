@@ -79,6 +79,8 @@ github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c h1:u6SKchux2yDvFQnDH
 github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c/go.mod h1:hzIxponao9Kjc7aWznkXaL4U4TWaDSs8zcsY4Ka08nM=
 github.com/willscott/go-nfs v0.0.0-20231115120015-a91b8b3bf0fd h1:1LYYk0Z0N1YxaQqaAQ2wAsyBSG2ynfdEXhbI097sfwk=
 github.com/willscott/go-nfs v0.0.0-20231115120015-a91b8b3bf0fd/go.mod h1:4Z7ChpBLuxUUc4D+WHabx1XXr8K3W/l648857EpEY6M=
+github.com/willscott/go-nfs v0.0.0-20231128164741-1a76cb0544e8 h1:8zyVJdrUxLj4JLngwILYhkRj6xYmcYmDMA9Rbf8peOg=
+github.com/willscott/go-nfs v0.0.0-20231128164741-1a76cb0544e8/go.mod h1:4Z7ChpBLuxUUc4D+WHabx1XXr8K3W/l648857EpEY6M=
 github.com/willscott/go-nfs-client v0.0.0-20200605172546-271fa9065b33 h1:Wd8wdpRzPXskyHvZLyw7Wc1fp5oCE2mhBCj7bAiibUs=
 github.com/willscott/go-nfs-client v0.0.0-20200605172546-271fa9065b33/go.mod h1:cOUKSNty+RabZqKhm5yTJT5Vq/Fe83ZRWAJ5Kj8nRes=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
