@@ -115,5 +115,6 @@ thanks to [vasi](https://github.com/vasi) for explaining one hundred things abou
 
 ### similar projects
 
-* Rust Git FUSE filesystem: https://github.com/fanzeyi/giblefs
+* Rust Git FUSE: https://github.com/fanzeyi/giblefs
+* Swift GIT FUSE: https://belkadan.com/blog/2023/11/GitMounter/
 * git for plan 9: https://orib.dev/git9.html
