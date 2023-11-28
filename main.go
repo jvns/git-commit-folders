@@ -24,7 +24,8 @@ import (
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage:")
-	fmt.Fprintf(os.Stderr, "  %s MOUNTPOINT\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s [options]\n", os.Args[0])
+	fmt.Fprintln(os.Stderr, "Options:")
 	flag.PrintDefaults()
 }
 
@@ -36,7 +37,7 @@ type options struct {
 
 func parseOptions() options {
 	var opts options
-	flag.StringVar(&opts.typ, "type", "webdav", "type of mount (webdav, nfs, or fuse)")
+	flag.StringVar(&opts.typ, "type", "fuse", "type of mount (webdav, nfs, or fuse)")
 	flag.StringVar(&opts.mountpoint, "mountpoint", "", "mountpoint")
 	flag.StringVar(&opts.repoDir, "repo", ".", "repo dir")
 	flag.Parse()
