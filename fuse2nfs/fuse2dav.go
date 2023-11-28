@@ -12,6 +12,8 @@ import (
 	"golang.org/x/net/webdav"
 )
 
+// yes fuse2dav is inside fuse2nfs, this is very bad naming, but that's how it is right now
+
 type FuseDavFS struct {
 	fs fs.FS
 }
