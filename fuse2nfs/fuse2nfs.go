@@ -43,7 +43,7 @@ func RunServer(fs billy.Filesystem, port int) {
 	panicOnErr(err, "starting TCP listener")
 	fmt.Printf("Server running at %s\n", listener.Addr())
 	handler := nfshelper.NewNullAuthHandler(fs)
-	cacheHelper := nfshelper.NewCachingHandler(handler, 1000)
+	cacheHelper := nfshelper.NewCachingHandler(handler, 10000)
 	panicOnErr(nfs.Serve(listener, cacheHelper), "serving nfs")
 }
 
