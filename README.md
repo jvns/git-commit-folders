@@ -1,15 +1,15 @@
 ### git-commit-folders
 
-Gives you a folder for every commit in your git repository. It's read only,
-uses 0 disk space, and updates live based on the state of your git repository.
+Gives you a folder for every commit in your git repository. 
 
-Extremely experimental software. 
+Extremely experimental software. please don't post this to news sites or anything, literally nobody has tried to run this software other than me.
 
 ### how to use it
 
 ```
 go build
 ./git-commit-folders -type nfs
+ls .git/commit-folders
 ```
 
 It'll mount a `.git/commit-folders` directory with all your commits in it
@@ -19,13 +19,17 @@ It'll mount a `.git/commit-folders` directory with all your commits in it
 It mounts a virtual filesystem (using NFS, fuse, or WebDav) and mounts it with
 the `mount` command. It doesn't work on Windows but probably could be made to.
 
+Because the filesystem is backed by your `.git` directory, it doesn't use any
+disk space. It more or less updates live, though I've noticed that sometimes
+the NFS version lags behind a bit, probably because of caching.
+
 ### NFS, FUSE, DAV
 
 there are 3 different filesystem implementations. I'd suggest:
 
 * `-type fuse` if you're on Linux
 * `-type nfs` if you're on Mac OS (because FUSE on Mac is annoying)
-* `-type webdav` for nobody, it's broken because I couldn't get symlinks on webdav to work. just leaving the webdav code in there in case it's salvageable.
+* `-type webdav` is broken because I couldn't get symlinks on webdav to work. just leaving the webdav code in there in case it's salvageable.
 
 You can try to use the FUSE version on Mac with MacFuse or FUSE-T if you want though.
 
@@ -42,10 +46,16 @@ branches/  branch_histories/  commits/  tags/
 
 **commits**
 
-the `commits/` directory looks empty, but you can list any individual commit by its sha
+the `commits/` directory is split by commit prefix so that it isn't horrible to list. For example:
 
 ```
-$ ls .git/commit-folders/commits/da83dce00782814ecfd33ef6d968ff9e43188a94/
+$ ls .git/commit-folders/commits/
+0a  02  1a  2c  3e  5a  6c  7e  9a  12  20  28  36  44  52  60  68  76
+$ ls .git/commit-folders/commits/73/
+73a08ab44ccbf1a305c458c35ab35661f0b7a7f3
+734c7397ae857c5b5031b11ad4806a441fbe6f0e
+7353dc80eace6be60f063d2d1d85d0ef8d73c967
+$ ls .git/commit-folders/commits/da/da83dce00782814ecfd33ef6d968ff9e43188a94/
 branches.go  commit.go  go.mod  go.sum  main.go  symlink.go
 ```
 
@@ -92,7 +102,6 @@ $ grep 'func readBlob' */commit.go
 03-fc450bb99460b9b793fcc36ca79b74caf6a9bc2a/commit.go:func readBlob(repo *git.Repository, id plumbing.Hash) ([]byte, error) {
 ```
 
-
 ### bugs
 
-there are 1 million bugs and limitations. I may or may not fix any of them.
+there are 1 million bugs and limitations. I may or may not ever fix any of them.
