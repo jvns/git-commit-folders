@@ -104,4 +104,7 @@ $ grep 'func readBlob' */commit.go
 
 ### bugs
 
-there are 1 million bugs and limitations. I may or may not ever fix any of them.
+there are 1 million bugs and limitations. I may or may not ever fix any of
+them. It's read only so it shouldn't do any harm to your git repository though,
+I think the worst thing that can happen is that it'll mislead you about
+something or be really slow to unmount.
