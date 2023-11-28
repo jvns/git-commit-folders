@@ -1,4 +1,4 @@
-### git-commit-folders
+# git commit folders
 
 Gives you a folder for every commit in your git repository. 
 
