@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anacrolix/fuse"
 	"github.com/anacrolix/fuse/fs"
 	"golang.org/x/net/webdav"
 )
@@ -72,31 +71,10 @@ func (f *FuseDavFile) Read(p []byte) (int, error) {
 func (f *FuseDavFile) Readdir(count int) ([]os.FileInfo, error) {
 	node := f.node
 	if f.allFiles == nil {
-		if n, ok := node.(fs.HandleReadDirAller); ok {
-			ctx := context.Background()
-			nodes, err := n.ReadDirAll(ctx)
-			if err != nil {
-				return nil, err
-			}
-			attrs := []os.FileInfo{}
-			for _, node := range nodes {
-				attr := fuse.Attr{}
-				switch node.Type {
-				case fuse.DT_Dir:
-					attr.Mode = os.ModeDir
-				case fuse.DT_File:
-					attr.Mode = 0644
-				case fuse.DT_Link:
-					attr.Mode = os.ModeSymlink
-				default:
-					attr.Mode = 0644
-				}
-
-				attrs = append(attrs, FuseAttr{attr: attr, name: node.Name})
-			}
-			f.allFiles = attrs
-		} else {
-			return []os.FileInfo{}, nil
+		var err error
+		f.allFiles, err = getFileInfos(node)
+		if err != nil {
+			return nil, err
 		}
 	}
 	if count == 0 {
@@ -116,11 +94,5 @@ func (f *FuseDavFile) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (f *FuseDavFile) Stat() (os.FileInfo, error) {
-	ctx := context.Background()
-	attr := fuse.Attr{}
-	err := f.node.Attr(ctx, &attr)
-	if err != nil {
-		return nil, err
-	}
-	return FuseAttr{attr: attr, name: f.name}, nil
+	return nodeToFileInfo(f.node, f.name)
 }

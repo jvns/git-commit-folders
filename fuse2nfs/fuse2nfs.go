@@ -158,19 +158,24 @@ func findNode(ctx context.Context, root fs.FS, path string) (fs.Node, error) {
 	return node, nil
 }
 
+func nodeToFileInfo(node fs.Node, filename string) (os.FileInfo, error) {
+	ctx := context.Background()
+	a := fuse.Attr{}
+	err := node.Attr(ctx, &a)
+	if err != nil {
+		return nil, err
+	}
+	parts := strings.Split(filename, "/")
+	return FuseAttr{attr: a, name: parts[len(parts)-1]}, nil
+}
+
 func (f *FuseNFSfs) Stat(filename string) (os.FileInfo, error) {
 	ctx := context.Background()
 	node, err := findNode(ctx, f.fs, filename)
 	if err != nil {
 		return nil, err
 	}
-	a := fuse.Attr{}
-	err = node.Attr(ctx, &a)
-	if err != nil {
-		return nil, err
-	}
-	parts := strings.Split(filename, "/")
-	return FuseAttr{attr: a, name: parts[len(parts)-1]}, nil
+	return nodeToFileInfo(node, filename)
 }
 
 func (f *FuseNFSfs) Lstat(filename string) (os.FileInfo, error) {
@@ -197,6 +202,11 @@ func (f *FuseNFSfs) ReadDir(path string) ([]os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	return getFileInfos(node)
+}
+
+func getFileInfos(node fs.Node) ([]os.FileInfo, error) {
+	ctx := context.Background()
 	if _, ok := node.(fs.HandleReadDirAller); !ok {
 		return []os.FileInfo{}, nil
 	}
@@ -204,6 +214,7 @@ func (f *FuseNFSfs) ReadDir(path string) ([]os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	dirents := []os.FileInfo{}
 	for _, file := range files {
 		attr := fuse.Attr{}
