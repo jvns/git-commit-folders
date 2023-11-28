@@ -8,11 +8,11 @@ Extremely experimental software. please don't post this to news sites or anythin
 
 ```
 go build
-./git-commit-folders -type nfs
-ls .git/commit-folders
+./git-commit-folders -type nfs -mountpoint /tmp/mntdir
+ls /tmp/mntdir
 ```
 
-It'll mount a `.git/commit-folders` directory with all your commits in it
+It'll mount a `/tmp/mntdir` directory with all your commits in it
 
 ### how it works
 
@@ -40,7 +40,7 @@ I might change all of this but right now there are four main subfolders.
 commit.
 
 ```
-$ ls .git/commit-folders
+$ ls /tmp/mntdir
 branches/  branch_histories/  commits/  tags/
 ```
 
@@ -49,13 +49,13 @@ branches/  branch_histories/  commits/  tags/
 the `commits/` directory is split by commit prefix so that it isn't horrible to list. For example:
 
 ```
-$ ls .git/commit-folders/commits/
+$ ls /tmp/mntdir/commits/
 0a  02  1a  2c  3e  5a  6c  7e  9a  12  20  28  36  44  52  60  68  76
-$ ls .git/commit-folders/commits/73/
+$ ls /tmp/mntdir/commits/73/
 73a08ab44ccbf1a305c458c35ab35661f0b7a7f3
 734c7397ae857c5b5031b11ad4806a441fbe6f0e
 7353dc80eace6be60f063d2d1d85d0ef8d73c967
-$ ls .git/commit-folders/commits/da/da83dce00782814ecfd33ef6d968ff9e43188a94/
+$ ls /tmp/mntdir/commits/da/da83dce00782814ecfd33ef6d968ff9e43188a94/
 branches.go  commit.go  go.mod  go.sum  main.go  symlink.go
 ```
 
@@ -63,18 +63,18 @@ branches.go  commit.go  go.mod  go.sum  main.go  symlink.go
 **tags**
 
 ```
-$ ls .git/commit-folders/tags/
+$ ls /tmp/mntdir/tags/
 v0.000@
-$ ls .git/commit-folders/tags/v0.000/
+$ ls /tmp/mntdir/tags/v0.000/
 branches.go  branch_histories.go  commit.go  go.mod  go.sum  main.go  symlink.go  tags.go
 ```
 
 **branches**
 
 ```
-$ ls .git/commit-folders/branches/
+$ ls /tmp/mntdir/branches/
 main@  test@
-$ ls .git/commit-folders/branches/main/
+$ ls /tmp/mntdir/branches/main/
 branches.go  branch_histories.go  commit.go  go.mod  go.sum  main.go  symlink.go
 ```
 
@@ -85,10 +85,10 @@ shows the last 100 commits on a branch. They're numbered, 0 is the most recent.
 here we'll look at the code from 4 versions ago
 
 ```
-$ ls .git/commit-folders/branch_histories/main/
+$ ls /tmp/mntdir/branch_histories/main/
 00-f1e4200744ae2fbe584d3ad3638cf61593a11624@  02-dc49186e766bcdb62a3958533a62d3fd626b253e@  04-b9c9e9f09cc918825066f105d62c550cc3c0958e@
 01-03bf66122c3acf44fb781f27cd41415af75fcbe4@  03-da83dce00782814ecfd33ef6d968ff9e43188a94@  05-97d8dea79acb702b3ad66e08218c26c2fda9b1de@
-$ ls .git/commit-folders/branch_histories/main/04-b9c9e9f09cc918825066f105d62c550cc3c0958e/
+$ ls /tmp/mntdir/branch_histories/main/04-b9c9e9f09cc918825066f105d62c550cc3c0958e/
 commit.go  go.mod  go.sum  main.go
 ```
 
@@ -97,7 +97,7 @@ commit.go  go.mod  go.sum  main.go
 you can go into your branch and grep for the code you deleted!
 
 ```
-$ cd .git/commit-folders/branch_histories/main
+$ cd /tmp/mntdir/branch_histories/main
 $ grep 'func readBlob' */commit.go
 03-fc450bb99460b9b793fcc36ca79b74caf6a9bc2a/commit.go:func readBlob(repo *git.Repository, id plumbing.Hash) ([]byte, error) {
 ```

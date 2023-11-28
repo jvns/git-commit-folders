@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -10,15 +9,12 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/anacrolix/fuse"
 	"github.com/anacrolix/fuse/fs"
-	"github.com/go-git/go-billy/v5/helper/chroot"
 	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/storage/filesystem"
 	myfuse "github.com/jvns/git-commit-folders/fuse"
 	"github.com/jvns/git-commit-folders/fuse2nfs"
 	"github.com/willscott/go-nfs"
@@ -27,7 +23,7 @@ import (
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Usage:")
 	fmt.Fprintf(os.Stderr, "  %s MOUNTPOINT\n", os.Args[0])
 	flag.PrintDefaults()
 }
@@ -44,6 +40,10 @@ func parseOptions() options {
 	flag.StringVar(&opts.mountpoint, "mountpoint", "", "mountpoint")
 	flag.StringVar(&opts.repoDir, "repo", ".", "repo dir")
 	flag.Parse()
+	if opts.mountpoint == "" {
+		usage()
+		log.Fatalf("Must specify mountpoint\n")
+	}
 	if opts.typ != "webdav" && opts.typ != "nfs" && opts.typ != "fuse" {
 		usage()
 		log.Fatalf("Invalid type %s\n", opts.typ)
@@ -59,20 +59,16 @@ func main() {
 	}
 	fs := myfuse.New(repo)
 
-	mountpoint := opts.mountpoint
-
-	if mountpoint == "" {
-		mountpoint, err = createMountpoint(repo)
-	}
+	createMountpoint(opts.mountpoint)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if opts.typ == "webdav" {
-		serveDav(fs, mountpoint)
+		serveDav(fs, opts.mountpoint)
 	} else if opts.typ == "nfs" {
-		serveNFS(fs, mountpoint)
+		serveNFS(fs, opts.mountpoint)
 	} else {
-		serveFuse(fs, mountpoint)
+		serveFuse(fs, opts.mountpoint)
 	}
 }
 
@@ -106,6 +102,9 @@ func serveDav(fs fs.FS, mountpoint string) {
 func serveNFS(fs fs.FS, mountpoint string) {
 	nfsFS := fuse2nfs.Fuse2NFS(fs)
 	handler := nfshelper.NewNullAuthHandler(nfsFS)
+	// was running into problems with stale file handles when this was set to
+	// 1000 so I set this to a bigger number. I don't think that's the right
+	// way to fix the problem but I don't know what is
 	cacheHelper := nfshelper.NewCachingHandler(handler, 10000)
 	listener, port := startListener()
 	server := func() error {
@@ -167,25 +166,9 @@ func serve(server func() error, mountCmd *exec.Cmd, mountpoint string) {
 	if err := umountCmd.Run(); err != nil {
 		fmt.Printf("Error unmounting %s: %v\n", mountpoint, err)
 	}
-	/* delete mountpoint dir if we created it */
-	if strings.Contains(mountpoint, ".git/commit-folders") {
-		if err := os.Remove(mountpoint); err != nil {
-			fmt.Printf("Error removing %s: %v\n", mountpoint, err)
-		}
-	}
 }
 
-func createMountpoint(r *git.Repository) (string, error) {
-	s, ok := r.Storer.(*filesystem.Storage)
-	if !ok {
-		return "", errors.New("Repository storage is not filesystem.Storage")
-	}
-	fs, ok := s.Filesystem().(*chroot.ChrootHelper)
-	if !ok {
-		return "", errors.New("Filesystem is not chroot.ChrootHelper")
-	}
-
-	mountpoint := fs.Root() + "/commit-folders"
+func createMountpoint(mountpoint string) (string, error) {
 	if _, err := os.Stat(mountpoint); os.IsNotExist(err) {
 		os.Mkdir(mountpoint, 0755)
 	}
