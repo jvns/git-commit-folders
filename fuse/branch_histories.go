@@ -62,6 +62,8 @@ func (f *BranchHistoryDir) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 func (f *BranchHistoryDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+	// todo: maybe make this configurable
+	MAX_COMMITS := 100
 	/* list last 20 commits, like 00-ID, symlink to ../commits/ID */
 	var entries []fuse.Dirent
 	ref, err := f.repo.Reference(plumbing.ReferenceName("refs/heads/"+f.branch), true)
@@ -75,7 +77,7 @@ func (f *BranchHistoryDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error
 		if err != nil {
 			break
 		}
-		if i >= 20 {
+		if i >= MAX_COMMITS {
 			break
 		}
 		entries = append(entries, fuse.Dirent{
