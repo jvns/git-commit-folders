@@ -38,7 +38,7 @@ func (f *BranchHistoriesDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, err
 	branches.ForEach(func(branch *plumbing.Reference) error {
 		entries = append(entries, fuse.Dirent{
 			Name: branch.Name().Short(),
-			Type: fuse.DT_Link,
+			Type: fuse.DT_Dir,
 		})
 		return nil
 	})
