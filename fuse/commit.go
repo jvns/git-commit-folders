@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 )
 
 type CommitsDir struct {
@@ -38,38 +40,68 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 type CommitsCache struct {
-	commits map[string][]string
+	commits map[string]map[string]bool
 	expiry  time.Time
 }
 
 var cachedCommits *CommitsCache
 
-func getCommits(repo *git.Repository) (map[string][]string, error) {
-	if cachedCommits == nil || cachedCommits.expiry.Before(time.Now()) {
-		objStorer := repo.Storer
-		commits := make(map[string][]string)
-		iter, err := objStorer.IterEncodedObjects(plumbing.CommitObject)
-		if err != nil {
-			return nil, err
-		}
-		start := time.Now()
-		for {
-			commit, err := iter.Next()
-			if err == io.EOF {
-				break
+func addToCache(item plumbing.Hash) error {
+	id := item.String()
+	prefix := id[:2]
+	if set, ok := cachedCommits.commits[prefix]; ok {
+		set[id] = true
+	} else {
+		cachedCommits.commits[prefix] = map[string]bool{id: true}
+	}
+	return nil
+}
+
+func getPackedCommits(repo *git.Repository) error {
+	/*
+	 * Just iterate over the full repo once at the beginning, otherwise only
+	 * look at the loose objects. This is probably not totally correct but it's
+	 * SO MUCH faster.
+	 * Also it assumes that commits never get deleted which is false
+	 */
+	if cachedCommits != nil {
+		return nil
+	}
+	objStorer := repo.Storer
+	iter, err := objStorer.IterEncodedObjects(plumbing.CommitObject)
+	if err != nil {
+		return err
+	}
+	cachedCommits = &CommitsCache{commits: make(map[string]map[string]bool)}
+	iter.ForEach(func(obj plumbing.EncodedObject) error {
+		return addToCache(obj.Hash())
+	})
+
+	return nil
+}
+
+func getCommits(repo *git.Repository) (map[string]map[string]bool, error) {
+	getPackedCommits(repo)
+	if cachedCommits.expiry.Before(time.Now()) {
+		if los, ok := repo.Storer.(storer.LooseObjectStorer); ok {
+			start := time.Now()
+			los.ForEachObjectHash(func(hash plumbing.Hash) error {
+				commit, err := repo.CommitObject(hash)
+				if err != nil {
+					return nil
+				}
+				addToCache(commit.Hash)
+				return nil
+			})
+			elapsed := time.Since(start)
+			cacheDuration := elapsed * 20
+			if cacheDuration > 1*time.Minute {
+				cacheDuration = 1 * time.Minute
 			}
-			if err != nil {
-				return nil, err
-			}
-			commits[commit.Hash().String()[:2]] = append(commits[commit.Hash().String()[:2]], commit.Hash().String())
+			cachedCommits.expiry = time.Now().Add(cacheDuration)
+		} else {
+			log.Fatal("can't get loose objects")
 		}
-		elapsed := time.Since(start)
-		// cache for 20x the time it took to read the commits
-		cacheDuration := elapsed * 20
-		if cacheDuration > 1*time.Minute {
-			cacheDuration = 1 * time.Minute
-		}
-		cachedCommits = &CommitsCache{commits, time.Now().Add(cacheDuration)}
 	}
 	return cachedCommits.commits, nil
 }
@@ -80,7 +112,7 @@ func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		return nil, err
 	}
 	var entries []fuse.Dirent
-	for prefix, _ := range commits {
+	for prefix := range commits {
 		entries = append(entries, fuse.Dirent{
 			Name: prefix,
 			Type: fuse.DT_Dir,
@@ -105,7 +137,7 @@ func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error
 		return nil, err
 	}
 	entries := []fuse.Dirent{}
-	for _, commit := range commits[f.prefix] {
+	for commit := range commits[f.prefix] {
 		entries = append(entries, fuse.Dirent{
 			Name: commit,
 			Type: fuse.DT_Dir,
