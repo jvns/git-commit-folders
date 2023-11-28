@@ -107,7 +107,9 @@ $ grep 'func readBlob' */commit.go
 there are 1 million bugs and limitations. I may or may not ever fix any of
 them. It's read only so it shouldn't do any harm to your git repository though,
 I think the worst thing that can happen is that it'll mislead you about
-something or be really slow to unmount.
+something or be really slow to unmount. Also it caches every commit ID in your
+repository in memory so maybe that's bad if you have a truly gigantic
+repository.
 
 ### thanks
 
