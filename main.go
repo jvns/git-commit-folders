@@ -33,7 +33,7 @@ func main() {
 	}
 
 	mountpoint := flag.Arg(0)
-	typ := "dav"
+	typ := "nfs"
 	if typ == "dav" {
 		fs := fuse.New(repo)
 		davFS := fuse2nfs.Fuse2Dav(fs)

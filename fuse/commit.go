@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"time"
 
@@ -40,7 +39,8 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	/* find all 2-digit hex strings for every commit */
 	prefixes := make(map[string]bool)
-	iter, err := f.repo.Log(&git.LogOptions{})
+	objStorer := f.repo.Storer
+	iter, err := objStorer.IterEncodedObjects(plumbing.CommitObject)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		if err != nil {
 			return nil, err
 		}
-		prefixes[commit.Hash.String()[:2]] = true
+		prefixes[commit.Hash().String()[:2]] = true
 		if len(prefixes) == 256 {
 			break
 		}
@@ -78,7 +78,8 @@ func (f *CommitsPrefixDir) Attr(ctx context.Context, a *fuse.Attr) error {
 
 func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	var entries []fuse.Dirent
-	iter, err := f.repo.Log(&git.LogOptions{})
+	objStorer := f.repo.Storer
+	iter, err := objStorer.IterEncodedObjects(plumbing.CommitObject)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +91,9 @@ func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error
 		if err != nil {
 			return nil, err
 		}
-		if commit.Hash.String()[:2] == f.prefix {
+		if commit.Hash().String()[:2] == f.prefix {
 			entries = append(entries, fuse.Dirent{
-				Name: commit.Hash.String(),
+				Name: commit.Hash().String(),
 				Type: fuse.DT_Dir,
 			})
 		}
@@ -121,7 +122,6 @@ type GitBlob struct {
 }
 
 func (t *GitTree) Attr(ctx context.Context, a *fuse.Attr) error {
-	log.Printf("GitTree.Attr: %s", t.id)
 	a.Mode = os.ModeDir | 0o555
 	return nil
 }
