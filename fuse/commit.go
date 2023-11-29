@@ -46,6 +46,14 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
+/*
+  2-level map: 47e33c05f9f07cac3de833e531bcac9ae052c7c is stored as
+  commits["47"]["47e3"]["47e33c05f9f07cac3de833e531bcac9ae052c7c"] = true
+
+  it's 2 levels so that we can handle repos with 1 million commits without
+  making listing commits unbearably slow. Otherwise `ls` is just a disaster.
+*/
+
 type CommitsCache struct {
 	commits map[string]map[string]map[string]bool
 	expiry  time.Time
@@ -67,13 +75,17 @@ func addToCache(item plumbing.Hash) error {
 	return nil
 }
 
+/*
+Just iterate over the full repo once at the beginning (called in `root.go`), otherwise only look at
+the loose objects.
+
+This assumes two false things:
+* repos never get repacked
+* commits never get deleted
+
+hopefully they're true enough most of the time though
+*/
 func getPackedCommits(repo *git.Repository) error {
-	/*
-	 * Just iterate over the full repo once at the beginning, otherwise only
-	 * look at the loose objects. This is probably not totally correct but it's
-	 * SO MUCH faster.
-	 * Also it assumes that commits never get deleted which is false
-	 */
 	if cachedCommits != nil {
 		return nil
 	}
