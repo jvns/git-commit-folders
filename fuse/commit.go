@@ -109,6 +109,7 @@ func getCommits(repo *git.Repository) (map[string]map[string]bool, error) {
 func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	commits, err := getCommits(f.repo)
 	if err != nil {
+		log.Printf("error: can't get commits: %v", err)
 		return nil, err
 	}
 	var entries []fuse.Dirent
@@ -134,6 +135,7 @@ func (f *CommitsPrefixDir) Attr(ctx context.Context, a *fuse.Attr) error {
 func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	commits, err := getCommits(f.repo)
 	if err != nil {
+		log.Printf("error: can't get commits: %v", err)
 		return nil, err
 	}
 	entries := []fuse.Dirent{}
@@ -150,6 +152,7 @@ func (f *CommitsPrefixDir) Lookup(ctx context.Context, name string) (fs.Node, er
 	/* get the git tree */
 	commit, err := f.repo.CommitObject(plumbing.NewHash(name))
 	if err != nil {
+		log.Printf("error: asdf: %v", err)
 		return nil, fuse.ENOENT
 	}
 	return &GitTree{repo: f.repo, id: commit.TreeHash}, nil
@@ -207,6 +210,7 @@ func (t *GitTree) Lookup(ctx context.Context, name string) (fs.Node, error) {
 func (b *GitTree) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	tree, err := b.repo.TreeObject(b.id)
 	if err != nil {
+		log.Printf("error: can't read tree object: %v", err)
 		return nil, err
 	}
 
@@ -223,7 +227,10 @@ func (b *GitTree) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		case filemode.Symlink:
 			d.Type = fuse.DT_Link
 		default:
-			fmt.Printf("%s has unknown mode %s\n", entry.Name, entry.Mode)
+			// TODO: this is a weird thing to do but I don't feel like dealing
+			// with submodules and otherwise things break
+			fmt.Printf("%s has unknown mode %s, skipping\n", entry.Name, entry.Mode)
+			continue
 		}
 		d.Name = entry.Name
 		dirs = append(dirs, d)
@@ -234,6 +241,7 @@ func (b *GitTree) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 func (b *GitBlob) Attr(ctx context.Context, a *fuse.Attr) error {
 	content, err := b.ReadAll(ctx)
 	if err != nil {
+		log.Printf("error: can't read git blob: %v", err)
 		return err
 	}
 	switch b.mode {
