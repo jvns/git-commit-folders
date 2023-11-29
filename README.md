@@ -9,10 +9,14 @@ Extremely experimental software. please don't post this to news sites or anythin
 ```
 go build
 ./git-commit-folders -type nfs -mountpoint /tmp/mntdir
+```
+
+It'll mount a `/tmp/mntdir` directory with all your commits in it, then in another terminal tab you can run:
+
+```
 ls /tmp/mntdir
 ```
 
-It'll mount a `/tmp/mntdir` directory with all your commits in it
 
 ### how it works
 
