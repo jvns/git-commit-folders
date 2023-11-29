@@ -23,6 +23,13 @@ type CommitsDir struct {
 }
 
 type CommitsPrefixDir struct {
+	/* /commits/af */
+	repo   *git.Repository
+	prefix string
+}
+
+type CommitsPrefixDir2 struct {
+	/* /commits/af/afee */
 	repo   *git.Repository
 	prefix string
 }
@@ -40,7 +47,7 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 type CommitsCache struct {
-	commits map[string]map[string]bool
+	commits map[string]map[string]map[string]bool
 	expiry  time.Time
 }
 
@@ -48,12 +55,15 @@ var cachedCommits *CommitsCache
 
 func addToCache(item plumbing.Hash) error {
 	id := item.String()
-	prefix := id[:2]
-	if set, ok := cachedCommits.commits[prefix]; ok {
-		set[id] = true
-	} else {
-		cachedCommits.commits[prefix] = map[string]bool{id: true}
+	prefix1 := id[:2]
+	prefix2 := id[:4]
+	if _, ok := cachedCommits.commits[prefix1]; !ok {
+		cachedCommits.commits[prefix1] = make(map[string]map[string]bool)
 	}
+	if _, ok := cachedCommits.commits[prefix1][prefix2]; !ok {
+		cachedCommits.commits[prefix1][prefix2] = make(map[string]bool)
+	}
+	cachedCommits.commits[prefix1][prefix2][id] = true
 	return nil
 }
 
@@ -72,15 +82,15 @@ func getPackedCommits(repo *git.Repository) error {
 	if err != nil {
 		return err
 	}
-	cachedCommits = &CommitsCache{commits: make(map[string]map[string]bool)}
+	cachedCommits = &CommitsCache{commits: make(map[string]map[string]map[string]bool)}
 	iter.ForEach(func(obj plumbing.EncodedObject) error {
 		return addToCache(obj.Hash())
 	})
-
+	log.Printf("Done caching packed commits")
 	return nil
 }
 
-func getCommits(repo *git.Repository) (map[string]map[string]bool, error) {
+func getCommits(repo *git.Repository) (map[string]map[string]map[string]bool, error) {
 	getPackedCommits(repo)
 	if cachedCommits.expiry.Before(time.Now()) {
 		if los, ok := repo.Storer.(storer.LooseObjectStorer); ok {
@@ -138,8 +148,34 @@ func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error
 		log.Printf("error: can't get commits: %v", err)
 		return nil, err
 	}
+	var entries []fuse.Dirent
+	for prefix := range commits[f.prefix] {
+		entries = append(entries, fuse.Dirent{
+			Name: prefix,
+			Type: fuse.DT_Dir,
+		})
+	}
+	return entries, nil
+}
+
+func (f *CommitsPrefixDir) Lookup(ctx context.Context, prefix string) (fs.Node, error) {
+	return &CommitsPrefixDir2{repo: f.repo, prefix: prefix}, nil
+}
+
+func (f *CommitsPrefixDir2) Attr(ctx context.Context, a *fuse.Attr) error {
+	a.Mode = os.ModeDir | 0o555
+	a.Inode = inode("/commits/" + f.prefix[:2] + "/" + f.prefix)
+	return nil
+}
+
+func (f *CommitsPrefixDir2) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+	commits, err := getCommits(f.repo)
+	if err != nil {
+		log.Printf("error: can't get commits: %v", err)
+		return nil, err
+	}
 	entries := []fuse.Dirent{}
-	for commit := range commits[f.prefix] {
+	for commit := range commits[f.prefix[:2]][f.prefix] {
 		entries = append(entries, fuse.Dirent{
 			Name: commit,
 			Type: fuse.DT_Dir,
@@ -148,11 +184,11 @@ func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error
 	return entries, nil
 }
 
-func (f *CommitsPrefixDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
+func (f *CommitsPrefixDir2) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	/* get the git tree */
 	commit, err := f.repo.CommitObject(plumbing.NewHash(name))
 	if err != nil {
-		log.Printf("error: asdf: %v", err)
+		log.Printf("error: can't get commit object: %v", err)
 		return nil, fuse.ENOENT
 	}
 	return &GitTree{repo: f.repo, id: commit.TreeHash}, nil
@@ -273,4 +309,8 @@ func readBlob(repo *git.Repository, id plumbing.Hash) ([]byte, error) {
 
 func (b *GitBlob) ReadAll(ctx context.Context) ([]byte, error) {
 	return readBlob(b.repo, b.id)
+}
+
+func commitPath(id string) string {
+	return "commits/" + id[:2] + "/" + id[:4] + "/" + id
 }

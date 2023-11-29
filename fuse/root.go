@@ -42,6 +42,8 @@ type FS struct {
 }
 
 func New(repo *git.Repository) *FS {
+	// start a goroutine to cache the commits
+	go getPackedCommits(repo)
 	return &FS{repo: repo}
 }
 

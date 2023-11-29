@@ -51,11 +51,9 @@ the `commits/` directory is split by commit prefix so that it isn't horrible to 
 ```
 $ ls /tmp/mntdir/commits/
 0a  02  1a  2c  3e  5a  6c  7e  9a  12  20  28  36  44  52  60  68  76
-$ ls /tmp/mntdir/commits/73/
+$ ls /tmp/mntdir/commits/73/73a0/
 73a08ab44ccbf1a305c458c35ab35661f0b7a7f3
-734c7397ae857c5b5031b11ad4806a441fbe6f0e
-7353dc80eace6be60f063d2d1d85d0ef8d73c967
-$ ls /tmp/mntdir/commits/da/da83dce00782814ecfd33ef6d968ff9e43188a94/
+$ ls /tmp/mntdir/commits/da/da83/da83dce00782814ecfd33ef6d968ff9e43188a94/
 branches.go  commit.go  go.mod  go.sum  main.go  symlink.go
 ```
 

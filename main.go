@@ -151,8 +151,8 @@ func serve(server func() error, mountCmd *exec.Cmd, mountpoint string) {
 	if mountCmd != nil {
 		if err := mountCmd.Run(); err != nil {
 			log.Fatal(err)
-
 		}
+		fmt.Printf("Mounted %s\n", mountpoint)
 	}
 
 	select {
