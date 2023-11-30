@@ -2,6 +2,7 @@ package fuse
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"strings"
 
@@ -108,6 +109,53 @@ func (c *Cache) HasPrefix(prefix string) bool {
 		}
 	}
 	return LooseObjectsHasPrefix(c.fs, prefixHash)
+}
+
+func (c *Cache) LooseTwoDigitPrefixes() []string {
+	var prefixes []string
+	dir, err := c.fs.ReadDir("objects")
+	if err != nil {
+		return nil
+	}
+	for _, entry := range dir {
+		name := entry.Name()
+		if len(name) != 2 {
+			continue
+		}
+		prefixes = append(prefixes, name)
+	}
+	return prefixes
+}
+
+func IndexTwoDigitPrefixes(idx *idxfile.MemoryIndex) []string {
+	noMapping := -1
+	var prefixes []string
+	for i := 0; i < 256; i++ {
+		k := idx.FanoutMapping[i]
+		if k != noMapping {
+			/* convert i to hex */
+			prefix := hex.EncodeToString([]byte{byte(i)})
+			prefixes = append(prefixes, prefix)
+		}
+	}
+	return prefixes
+}
+
+func (c *Cache) TwoDigitPrefixes() []string {
+	var prefixSet map[string]bool
+	for _, index := range c.indexes {
+		for _, prefix := range IndexTwoDigitPrefixes(index) {
+			prefixSet[prefix] = true
+		}
+	}
+	for _, prefix := range c.LooseTwoDigitPrefixes() {
+		prefixSet[prefix] = true
+	}
+	var prefixes []string
+	for prefix := range prefixSet {
+		prefixes = append(prefixes, prefix)
+	}
+	return prefixes
 }
 
 /* copied from idxfile.go */
