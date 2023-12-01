@@ -17,7 +17,6 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
-	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/storage/filesystem"
 )
 
@@ -47,88 +46,6 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Ctime = time.Unix(0, 0)
 	a.Inode = inode("/commits")
 	return nil
-}
-
-/*
-  2-level map: 47e33c05f9f07cac3de833e531bcac9ae052c7c is stored as
-  commits["47"]["47e3"]["47e33c05f9f07cac3de833e531bcac9ae052c7c"] = true
-
-  it's 2 levels so that we can handle repos with 1 million commits without
-  making listing commits unbearably slow. Otherwise `ls` is just a disaster.
-*/
-
-type CommitsCache struct {
-	commits map[string]map[string]map[string]bool
-	expiry  time.Time
-}
-
-var cachedCommits *CommitsCache
-
-func addToCache(item plumbing.Hash) error {
-	id := item.String()
-	prefix1 := id[:2]
-	prefix2 := id[:4]
-	if _, ok := cachedCommits.commits[prefix1]; !ok {
-		cachedCommits.commits[prefix1] = make(map[string]map[string]bool)
-	}
-	if _, ok := cachedCommits.commits[prefix1][prefix2]; !ok {
-		cachedCommits.commits[prefix1][prefix2] = make(map[string]bool)
-	}
-	cachedCommits.commits[prefix1][prefix2][id] = true
-	return nil
-}
-
-/*
-Just iterate over the full repo once at the beginning (called in `root.go`), otherwise only look at
-the loose objects.
-
-This assumes two false things:
-* repos never get repacked
-* commits never get deleted
-
-hopefully they're true enough most of the time though
-*/
-func getPackedCommits(repo *git.Repository) error {
-	if cachedCommits != nil {
-		return nil
-	}
-	objStorer := repo.Storer
-	iter, err := objStorer.IterEncodedObjects(plumbing.CommitObject)
-	if err != nil {
-		return err
-	}
-	cachedCommits = &CommitsCache{commits: make(map[string]map[string]map[string]bool)}
-	iter.ForEach(func(obj plumbing.EncodedObject) error {
-		return addToCache(obj.Hash())
-	})
-	log.Printf("Done caching packed commits")
-	return nil
-}
-
-func getCommits(repo *git.Repository) (map[string]map[string]map[string]bool, error) {
-	getPackedCommits(repo)
-	if cachedCommits.expiry.Before(time.Now()) {
-		if los, ok := repo.Storer.(storer.LooseObjectStorer); ok {
-			start := time.Now()
-			los.ForEachObjectHash(func(hash plumbing.Hash) error {
-				commit, err := repo.CommitObject(hash)
-				if err != nil {
-					return nil
-				}
-				addToCache(commit.Hash)
-				return nil
-			})
-			elapsed := time.Since(start)
-			cacheDuration := elapsed * 20
-			if cacheDuration > 1*time.Minute {
-				cacheDuration = 1 * time.Minute
-			}
-			cachedCommits.expiry = time.Now().Add(cacheDuration)
-		} else {
-			log.Fatal("can't get loose objects")
-		}
-	}
-	return cachedCommits.commits, nil
 }
 
 func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
