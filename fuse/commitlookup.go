@@ -34,7 +34,7 @@ func getDotGit(repo *git.Repository) (*dotgit.DotGit, error) {
 	return dotgit.New(osfs.New(root)), nil
 }
 
-func twoDigitPrefixes(repo *git.Repository) ([]string, error) {
+func TwoDigitPrefixes(repo *git.Repository) ([]string, error) {
 	s, ok := repo.Storer.(*filesystem.Storage)
 	if !ok {
 		return nil, errors.New("Repository storage is not filesystem.Storage")

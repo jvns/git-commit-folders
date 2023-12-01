@@ -53,6 +53,15 @@ func parseOptions() options {
 }
 
 func main() {
+	repo, _ := git.PlainOpen("/Users/bork/clones/linux")
+	prefixes, err := myfuse.TwoDigitPrefixes(repo)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(prefixes)
+}
+
+func main() {
 	opts := parseOptions()
 	repo, err := git.PlainOpen(opts.repoDir)
 	if err != nil {

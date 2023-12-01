@@ -49,7 +49,7 @@ func (f *CommitsDir) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	prefixes, err := twoDigitPrefixes(f.repo)
+	prefixes, err := TwoDigitPrefixes(f.repo)
 	if err != nil {
 		return nil, err
 	}
