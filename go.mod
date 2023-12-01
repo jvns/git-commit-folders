@@ -14,7 +14,7 @@ replace github.com/jvns/git-commit-folders/fuse => ./fuse
 
 replace github.com/jvns/git-commit-folders/fuse2dav => ./fuse2dav
 
-replace github.com/go-git/go-git/v5 => /Users/bork/clones/go-git
+replace github.com/go-git/go-git/v5 => github.com/jvns/go-git/v5 v5.0.0-20231201204810-9ee73d7154b1
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
