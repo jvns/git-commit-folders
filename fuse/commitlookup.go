@@ -54,3 +54,28 @@ func twoDigitPrefixes(repo *git.Repository) ([]string, error) {
 	}
 	return prefixes, nil
 }
+
+func fourdigitprefixes(repo *git.Repository, prefix string) ([]string, error) {
+	s, ok := repo.Storer.(*filesystem.Storage)
+	if !ok {
+		return nil, errors.New("Repository storage is not filesystem.Storage")
+	}
+	var prefixes []string
+	prefixBytes, err := hex.DecodeString(prefix)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < 256; i++ {
+		prefix := append(prefixBytes, byte(i))
+		iter, err := s.IterEncodedObjectsPrefix(plumbing.CommitObject, prefix)
+		_, err = iter.Next()
+		if err == io.EOF {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		prefixes = append(prefixes, hex.EncodeToString(prefix))
+	}
+	return prefixes, nil
+}

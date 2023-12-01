@@ -2,6 +2,8 @@ package fuse
 
 import (
 	"context"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +18,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/storer"
+	"github.com/go-git/go-git/v5/storage/filesystem"
 )
 
 type CommitsDir struct {
@@ -154,13 +157,12 @@ func (f *CommitsPrefixDir) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 func (f *CommitsPrefixDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	commits, err := getCommits(f.repo)
+	prefixes, err := fourdigitprefixes(f.repo, f.prefix)
 	if err != nil {
-		log.Printf("error: can't get commits: %v", err)
 		return nil, err
 	}
 	var entries []fuse.Dirent
-	for prefix := range commits[f.prefix] {
+	for _, prefix := range prefixes {
 		entries = append(entries, fuse.Dirent{
 			Name: prefix,
 			Type: fuse.DT_Dir,
@@ -180,15 +182,27 @@ func (f *CommitsPrefixDir2) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 
 func (f *CommitsPrefixDir2) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	commits, err := getCommits(f.repo)
+	s, ok := f.repo.Storer.(*filesystem.Storage)
+	if !ok {
+		return nil, errors.New("Repository storage is not filesystem.Storage")
+	}
+	prefix, err := hex.DecodeString(f.prefix)
 	if err != nil {
-		log.Printf("error: can't get commits: %v", err)
 		return nil, err
 	}
+	iter, err := s.IterEncodedObjectsPrefix(plumbing.CommitObject, prefix)
 	entries := []fuse.Dirent{}
-	for commit := range commits[f.prefix[:2]][f.prefix] {
+	for {
+		commit, err := iter.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
 		entries = append(entries, fuse.Dirent{
-			Name: commit,
+			Name: commit.Hash().String(),
 			Type: fuse.DT_Dir,
 		})
 	}
