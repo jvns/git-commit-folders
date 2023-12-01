@@ -2,11 +2,8 @@ package fuse
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
-	"strings"
 
-	"github.com/go-git/go-billy"
 	"github.com/go-git/go-billy/v5/helper/chroot"
 	"github.com/go-git/go-billy/v5/osfs"
 	git "github.com/go-git/go-git/v5"
@@ -39,7 +36,7 @@ func getDotGit(repo *git.Repository) (*dotgit.DotGit, error) {
 	return dotgit.New(osfs.New(root)), nil
 }
 
-func getIndexes(repo *git.Repository) ([]*idxfile.MemoryIndex, error) {
+func getIndexes(repo *git.Repository) ([]*PackedIndex, error) {
 	dotgit, err := getDotGit(repo)
 	if err != nil {
 		return nil, err
@@ -48,7 +45,7 @@ func getIndexes(repo *git.Repository) ([]*idxfile.MemoryIndex, error) {
 	if err != nil {
 		return nil, err
 	}
-	var indexes []*idxfile.MemoryIndex
+	var indexes []*PackedIndex
 	for _, packHash := range packs {
 		f, err := dotgit.ObjectPackIdx(packHash)
 		if err != nil {
@@ -62,7 +59,7 @@ func getIndexes(repo *git.Repository) ([]*idxfile.MemoryIndex, error) {
 		if err = d.Decode(idxf); err != nil {
 			return nil, err
 		}
-		indexes = append(indexes, idxf)
+		indexes = append(indexes, &PackedIndex{*idxf})
 	}
 	return indexes, nil
 }
@@ -72,94 +69,54 @@ func initCache(repo *git.Repository) (*Cache, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Cache{indexes: indexes, repo: repo}, nil
+	root, _ := path(repo)
+	return &Cache{indexes: indexes, repo: repo, los: LooseObjectStore{osfs.New(root)}}, nil
 }
 
 type Cache struct {
-	indexes []*idxfile.MemoryIndex
+	indexes []*PackedIndex
 	repo    *git.Repository
-	fs      billy.Filesystem
+	los     LooseObjectStore
 }
 
-func IndexHasPrefix(index *idxfile.MemoryIndex, hash plumbing.Hash) bool {
-	_, found := findHashIndex(index, hash)
-	return found
-}
-
-func LooseObjectsHasPrefix(fs billy.Filesystem, hash plumbing.Hash) bool {
-	sha := hash.String()
-	dir, err := fs.ReadDir(fs.Join("objects", sha[:2]))
-	if err != nil {
-		return false
+func (c *Cache) ObjectStores() []ObjectStore {
+	var stores []ObjectStore
+	for _, index := range c.indexes {
+		stores = append(stores, index)
 	}
-	for _, entry := range dir {
-		name := entry.Name()
-		if strings.HasPrefix(name, sha[2:]) {
+	stores = append(stores, &c.los)
+	return stores
+}
+
+func (c *Cache) HasPrefix(prefix string) bool {
+	stores := c.ObjectStores()
+	for _, store := range stores {
+		if store.HasPrefix(plumbing.NewHash(prefix)) {
 			return true
 		}
 	}
 	return false
 }
 
-func (c *Cache) HasPrefix(prefix string) bool {
-	prefixHash := plumbing.NewHash(prefix)
-	for _, index := range c.indexes {
-		if IndexHasPrefix(index, prefixHash) {
-			return true
+func (c *Cache) TwoDigitPrefixes() ([]string, error) {
+	prefixes := make(map[string]bool)
+	for _, store := range c.ObjectStores() {
+		twoDigitPrefixes, err := store.TwoDigitPrefixes()
+		if err != nil {
+			return nil, err
+		}
+		for _, prefix := range twoDigitPrefixes {
+			prefixes[prefix] = true
 		}
 	}
-	return LooseObjectsHasPrefix(c.fs, prefixHash)
+	var prefixesSlice []string
+	for prefix := range prefixes {
+		prefixesSlice = append(prefixesSlice, prefix)
+	}
+	return prefixesSlice, nil
 }
 
-func (c *Cache) LooseTwoDigitPrefixes() []string {
-	var prefixes []string
-	dir, err := c.fs.ReadDir("objects")
-	if err != nil {
-		return nil
-	}
-	for _, entry := range dir {
-		name := entry.Name()
-		if len(name) != 2 {
-			continue
-		}
-		prefixes = append(prefixes, name)
-	}
-	return prefixes
-}
-
-func IndexTwoDigitPrefixes(idx *idxfile.MemoryIndex) []string {
-	noMapping := -1
-	var prefixes []string
-	for i := 0; i < 256; i++ {
-		k := idx.FanoutMapping[i]
-		if k != noMapping {
-			/* convert i to hex */
-			prefix := hex.EncodeToString([]byte{byte(i)})
-			prefixes = append(prefixes, prefix)
-		}
-	}
-	return prefixes
-}
-
-func (c *Cache) TwoDigitPrefixes() []string {
-	var prefixSet map[string]bool
-	for _, index := range c.indexes {
-		for _, prefix := range IndexTwoDigitPrefixes(index) {
-			prefixSet[prefix] = true
-		}
-	}
-	for _, prefix := range c.LooseTwoDigitPrefixes() {
-		prefixSet[prefix] = true
-	}
-	var prefixes []string
-	for prefix := range prefixSet {
-		prefixes = append(prefixes, prefix)
-	}
-	return prefixes
-}
-
-/* copied from idxfile.go */
-func findHashIndex(idx *idxfile.MemoryIndex, h plumbing.Hash) (int, bool) {
+func findHashIndex(idx *PackedIndex, h plumbing.Hash) (int, bool) {
 	objectIDLength := uint64(hash.Size)
 	noMapping := -1
 	k := idx.FanoutMapping[h[0]]
