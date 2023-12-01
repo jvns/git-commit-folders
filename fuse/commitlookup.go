@@ -88,20 +88,20 @@ func (c *Cache) ObjectStores() []ObjectStore {
 	return stores
 }
 
-func (c *Cache) HasPrefix(prefix string) bool {
+func (c *Cache) HasPrefix(prefix string, typ plumbing.ObjectType) bool {
 	stores := c.ObjectStores()
 	for _, store := range stores {
-		if store.HasPrefix(plumbing.NewHash(prefix)) {
+		if store.HasPrefix(plumbing.NewHash(prefix), typ) {
 			return true
 		}
 	}
 	return false
 }
 
-func (c *Cache) TwoDigitPrefixes() ([]string, error) {
+func (c *Cache) TwoDigitPrefixes(typ plumbing.ObjectType) ([]string, error) {
 	prefixes := make(map[string]bool)
 	for _, store := range c.ObjectStores() {
-		twoDigitPrefixes, err := store.TwoDigitPrefixes()
+		twoDigitPrefixes, err := store.TwoDigitPrefixes(typ)
 		if err != nil {
 			return nil, err
 		}
