@@ -43,7 +43,7 @@ func twoDigitPrefixes(repo *git.Repository) ([]string, error) {
 	for i := 0; i < 256; i++ {
 		prefix := []byte{byte(i)}
 		iter, err := s.IterEncodedObjectsPrefix(plumbing.CommitObject, prefix)
-		obj, err := iter.Next()
+		_, err = iter.Next()
 		if err == io.EOF {
 			continue
 		}
