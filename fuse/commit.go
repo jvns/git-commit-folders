@@ -129,13 +129,12 @@ func getCommits(repo *git.Repository) (map[string]map[string]map[string]bool, er
 }
 
 func (f *CommitsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	commits, err := getCommits(f.repo)
+	prefixes, err := twoDigitPrefixes(f.repo)
 	if err != nil {
-		log.Printf("error: can't get commits: %v", err)
 		return nil, err
 	}
 	var entries []fuse.Dirent
-	for prefix := range commits {
+	for _, prefix := range prefixes {
 		entries = append(entries, fuse.Dirent{
 			Name: prefix,
 			Type: fuse.DT_Dir,

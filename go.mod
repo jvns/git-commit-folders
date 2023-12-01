@@ -10,7 +10,9 @@ require (
 replace github.com/jvns/git-commit-folders/fuse => ./fuse
 
 replace github.com/jvns/git-commit-folders/fuse2dav => ./fuse2dav
-replace github.com/go-git/go-git => /Users/bork/clones/go-git
+replace github.com/go-git/go-git/plumbing/format/idxfile => /Users/bork/clones/go-git/plumbing/format/idxfile
+replace github.com/go-git/go-git/plumbing/format/packfile => /Users/bork/clones/go-git/plumbing/format/packfile
+replace github.com/go-git/go-git/storage/filesystem => /Users/bork/clones/go-git/storage/filesystem
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
