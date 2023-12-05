@@ -2,7 +2,8 @@
 
 Gives you a folder for every commit in your git repository. 
 
-Extremely experimental software. please don't post this to news sites or anything, literally nobody has tried to run this software other than me.
+Extremely experimental software with lots of bugs but it works for me and I've
+found it a tiny bit useful.
 
 ### how to use it
 
