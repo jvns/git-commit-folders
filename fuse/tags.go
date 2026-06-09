@@ -45,12 +45,16 @@ func (f *TagsDir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 
 func (f *TagsDir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	refName := plumbing.ReferenceName("refs/tags/" + name)
-	// we need to resolve the reference in case it's symbolic
-	// TODO: this doesn't seem to work for the tags in git's own repo
 	ref, err := f.repo.Reference(refName, true)
 	if err != nil {
 		return nil, fuse.ENOENT
 	}
-	id := ref.Hash().String()
-	return &SymLink{"../" + commitPath(id)}, nil
+	hash := ref.Hash()
+	// annotated tags point to a tag object, not a commit — peel to the commit
+	if tagObj, err := f.repo.TagObject(hash); err == nil {
+		if commit, err := tagObj.Commit(); err == nil {
+			hash = commit.Hash
+		}
+	}
+	return &SymLink{"../" + commitPath(hash.String())}, nil
 }
