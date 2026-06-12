@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -111,7 +112,13 @@ func serveNFS(fs fs.FS, mountpoint string) {
 	server := func() error {
 		return nfs.Serve(listener, cacheHelper)
 	}
-	mountCmd := exec.Command("mount", "-o", fmt.Sprintf("port=%d,mountport=%d", port, port), "-t", "nfs", "localhost:/", mountpoint)
+
+	options := fmt.Sprintf("port=%d,mountport=%d", port, port)
+	if runtime.GOOS == "linux" {
+		options += ",nfsvers=3,noacl,tcp"
+	}
+
+	mountCmd := exec.Command("mount", "-o", options, "-t", "nfs", "localhost:/", mountpoint)
 	serve(server, mountCmd, mountpoint)
 }
 
